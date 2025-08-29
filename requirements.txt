@@ -1,8 +1,6 @@
 pandas
 numpy
 scikit-learn
-biopython
 matplotlib
 seaborn
-plotly
 jupyter
