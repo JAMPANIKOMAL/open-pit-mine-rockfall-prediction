@@ -1,0 +1,26 @@
+# Python virtual environment
+venv/
+env/
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints/
+notebooks/.ipynb_checkpoints/
+
+# VS Code settings
+.vscode/
+
+# System files (macOS/Windows)
+.DS_Store
+Thumbs.db
+
+# Compiled Python files
+__pycache__/
+*.pyc
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Data files
+data/
