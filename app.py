@@ -136,6 +136,99 @@ def load_test_data():
         st.warning(f"Test data not available: {str(e)}")
         return None, None
 
+
+def prepare_input_for_model(df: pd.DataFrame, metadata: dict, model=None) -> pd.DataFrame:
+    """Normalize and align input dataframe columns to the feature names the model expects.
+
+    This function will:
+    - lower-case and strip incoming column names
+    - attempt to use metadata feature list if available
+    - fall back to model.feature_names_in_ when present
+    - apply a small synonym map for common column name variants
+    - return a dataframe with columns ordered to match the model
+    """
+    # Defensive copy
+    df = df.copy()
+
+    # normalize incoming column names
+    original_cols = list(df.columns)
+    norm_cols = {c: c.strip().lower() for c in original_cols}
+    df.columns = [c.strip().lower() for c in original_cols]
+
+    # Determine target feature names from metadata or model
+    target_features = None
+    if metadata:
+        for key in ("feature_names", "feature_columns", "model_features", "features"):
+            if key in metadata and metadata[key]:
+                target_features = list(metadata[key])
+                break
+
+    if target_features is None and model is not None:
+        feat_attr = getattr(model, "feature_names_in_", None)
+        if feat_attr is not None:
+            target_features = list(feat_attr)
+
+    # Normalize target features if present
+    if target_features is not None:
+        target_norm = [str(c).strip().lower() for c in target_features]
+    else:
+        target_norm = None
+
+    # small synonym map for common naming differences
+    synonyms = {
+        'ground_displacement': 'displacement_mm',
+        'displacement': 'displacement_mm',
+        'displacement_mm': 'displacement_mm',
+        'vibration_sensor': 'vibration_level',
+        'vibration_level': 'vibration_level',
+        'vibration': 'vibration_level',
+        'rainfall': 'rainfall_mm',
+        'rainfall_mm': 'rainfall_mm',
+        'water_pressure': 'joint_water_pressure',
+        'joint_water_pressure': 'joint_water_pressure',
+        'seismic_activity': 'seismic_activity'
+    }
+
+    # If we know the desired features, build mapping to them
+    if target_norm is not None:
+        col_map = {}
+        for src in df.columns:
+            # direct match
+            if src in target_norm:
+                # map to the original target name (preserve original casing from metadata)
+                mapped = target_features[target_norm.index(src)]
+                col_map[src] = mapped
+                continue
+
+            # synonym match: find a target that equals the synonym
+            syn = synonyms.get(src)
+            if syn and syn in target_norm:
+                mapped = target_features[target_norm.index(syn)]
+                col_map[src] = mapped
+                continue
+
+            # try reverse: if any target_norm equals a synonym of src
+            for t_norm, t_orig in zip(target_norm, target_features):
+                if t_norm in synonyms.values() and t_norm == synonyms.get(src, ''):
+                    col_map[src] = t_orig
+                    break
+
+        # Rename incoming columns to match model expected names
+        if col_map:
+            df = df.rename(columns=col_map)
+
+        # Check for missing features
+        missing = [f for f in target_features if f not in df.columns]
+        if missing:
+            raise ValueError(f"Input is missing required features: {missing}. Available: {list(df.columns)}")
+
+        # Reorder to target feature order
+        df = df[target_features]
+        return df
+
+    # If we don't know expected features, return df as-is but normalized
+    return df
+
 # Main app
 def main():
     # Header
@@ -314,35 +407,57 @@ def show_prediction_page(best_model, metadata, label_encoder):
         st.info("CSV should contain columns: seismic_activity, vibration_sensor, water_pressure, ground_displacement, rainfall")
         
         uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
-        
+
         if uploaded_file is not None:
             try:
                 input_data = pd.read_csv(uploaded_file)
                 st.write("Uploaded Data Preview:")
                 st.dataframe(input_data.head())
-                
+
                 if st.button("Predict Risk Levels", type="primary"):
-                    predictions = best_model.predict(input_data)
-                    
-                    if label_encoder:
-                        predictions_display = label_encoder.inverse_transform(predictions)
-                    else:
-                        predictions_display = predictions
-                    
-                    results = input_data.copy()
-                    results['Predicted_Risk'] = predictions_display
-                    
-                    st.success("Predictions completed!")
-                    st.dataframe(results)
-                    
-                    # Download results
-                    csv = results.to_csv(index=False)
-                    st.download_button(
-                        label="Download Predictions",
-                        data=csv,
-                        file_name="rockfall_predictions.csv",
-                        mime="text/csv"
-                    )
+                    try:
+                        input_prepared = prepare_input_for_model(input_data, metadata, best_model)
+                    except Exception as e:
+                        st.error(f"Prediction error: {str(e)}")
+                        st.info("Make sure your CSV columns match the model features. Example: displacement_mm, vibration_level, rainfall_mm, joint_water_pressure, seismic_activity")
+                        input_prepared = None
+
+                    if input_prepared is not None:
+                        predictions = best_model.predict(input_prepared)
+
+                        if label_encoder:
+                            try:
+                                predictions_display = label_encoder.inverse_transform(predictions)
+                            except Exception:
+                                predictions_display = predictions
+                        else:
+                            # Map numeric predictions to class names if metadata provides them
+                            class_names = metadata.get('risk_categories') if metadata else None
+                            if class_names is not None:
+                                try:
+                                    predictions_display = [
+                                        class_names[int(p)] if (isinstance(p, (int, np.integer))) else str(p)
+                                        for p in predictions
+                                    ]
+                                except Exception:
+                                    predictions_display = predictions
+                            else:
+                                predictions_display = predictions
+
+                        results = input_data.copy()
+                        results['Predicted_Risk'] = predictions_display
+
+                        st.success("Predictions completed!")
+                        st.dataframe(results)
+
+                        # Download results
+                        csv = results.to_csv(index=False)
+                        st.download_button(
+                            label="Download Predictions",
+                            data=csv,
+                            file_name="rockfall_predictions.csv",
+                            mime="text/csv"
+                        )
             except Exception as e:
                 st.error(f"Error processing file: {str(e)}")
     
@@ -394,17 +509,36 @@ def make_prediction(model, input_data, metadata, label_encoder):
     """Make prediction and display results"""
     
     try:
-        prediction = model.predict(input_data)[0]
+        # Align input columns to model's expected features
+        try:
+            input_prepared = prepare_input_for_model(input_data, metadata, model)
+        except Exception as e:
+            st.error(f"Prediction error: {str(e)}")
+            st.info("Check that input feature names match those used during training. Example features: displacement_mm, vibration_level, rainfall_mm, joint_water_pressure, seismic_activity")
+            return
+
+        prediction = model.predict(input_prepared)[0]
         
-        # Get display label
-        if label_encoder:
-            prediction_label = label_encoder.inverse_transform([prediction])[0]
-        else:
-            prediction_label = prediction
+        # Get display label (map numeric labels to category names if label encoder not present)
+        try:
+            if label_encoder:
+                prediction_label = label_encoder.inverse_transform([prediction])[0]
+            else:
+                class_names = metadata.get('risk_categories') if metadata else None
+                if class_names and isinstance(prediction, (int, np.integer)):
+                    # map index to class name
+                    try:
+                        prediction_label = class_names[int(prediction)]
+                    except Exception:
+                        prediction_label = str(prediction)
+                else:
+                    prediction_label = str(prediction)
+        except Exception:
+            prediction_label = str(prediction)
         
         # Get probability if available
         try:
-            probabilities = model.predict_proba(input_data)[0]
+            probabilities = model.predict_proba(input_prepared)[0]
             has_proba = True
         except:
             has_proba = False
