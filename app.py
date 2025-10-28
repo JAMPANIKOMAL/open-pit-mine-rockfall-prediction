@@ -90,8 +90,8 @@ st.markdown("""
     .metric-card {
         background-color: #1E1E1E;
         padding: 15px;
-        border: 1px solid #444444;
-        border-left: 4px solid #4A90E2;
+        border: 1px solid #333333;
+        border-left: 4px solid #333333;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -180,23 +180,39 @@ def main():
 
 def show_home_page(metadata):
     """Home page with project overview"""
-    
     col1, col2, col3 = st.columns(3)
-    
+
+    # Build HTML cards to avoid stray empty boxes and provide precise layout
+    acc_percent = int(round(metadata.get('test_accuracy', 0) * 100))
+    model_name = metadata.get('model_name', 'Unknown')
+
+    card_template = """
+    <div style='background:#1E1E1E;padding:15px;border:1px solid #333333;border-left:4px solid #333333;border-radius:6px;'>
+      <div style='color:#B0B0B0;font-size:14px;margin-bottom:8px;'>{label}</div>
+      <div style='font-size:36px;color:white;margin-bottom:10px;'>{value}</div>
+      {progress}
+    </div>
+    """
+
+    # Column 1: Model Accuracy (with custom progress bar)
+    progress_html = f"""
+    <div style='background:#222222;height:10px;border-radius:6px;overflow:hidden;'>
+      <div style='width:{acc_percent}%;background:#4A90E2;height:10px;'></div>
+    </div>
+    """
     with col1:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("Model Accuracy", f"{metadata.get('test_accuracy', 0)*100:.2f}%")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
+        html = card_template.format(label='Model Accuracy', value=f'{acc_percent}%', progress=progress_html)
+        st.markdown(html, unsafe_allow_html=True)
+
+    # Column 2: Risk Categories (no progress)
     with col2:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("Risk Categories", "4 Levels")
-        st.markdown('</div>', unsafe_allow_html=True)
-    
+        html = card_template.format(label='Risk Categories', value='4 Levels', progress='')
+        st.markdown(html, unsafe_allow_html=True)
+
+    # Column 3: Model Type (no progress)
     with col3:
-        st.markdown('<div class="metric-card">', unsafe_allow_html=True)
-        st.metric("Model Type", metadata.get('model_name', 'Unknown'))
-        st.markdown('</div>', unsafe_allow_html=True)
+        html = card_template.format(label='Model Type', value=model_name, progress='')
+        st.markdown(html, unsafe_allow_html=True)
     
     st.markdown("---")
     
@@ -503,15 +519,28 @@ def show_performance_page(best_model, metadata, label_encoder):
     
     # Display metrics
     col1, col2, col3, col4 = st.columns(4)
-    
+
     with col1:
-        st.metric("Model", metadata.get('model_name', 'Unknown'))
+        st.markdown("### Model")
+        st.write(metadata.get('model_name', 'Unknown'))
+
+    # Test Accuracy as percent + progress bar
     with col2:
-        st.metric("Test Accuracy", f"{metadata.get('test_accuracy', 0)*100:.2f}%")
+        acc_percent = int(round(metadata.get('test_accuracy', 0) * 100))
+        st.markdown("### Test Accuracy")
+        st.markdown(f"<h2 style='color: white; margin: 0;'>{acc_percent:.0f}%</h2>", unsafe_allow_html=True)
+        st.progress(acc_percent)
+
+    # F1-Score as percent + progress bar
     with col3:
-        st.metric("F1-Score", f"{metadata.get('test_f1_score', 0)*100:.2f}%")
+        f1_percent = int(round(metadata.get('test_f1_score', 0) * 100))
+        st.markdown("### F1-Score")
+        st.markdown(f"<h2 style='color: white; margin: 0;'>{f1_percent:.0f}%</h2>", unsafe_allow_html=True)
+        st.progress(f1_percent)
+
     with col4:
-        st.metric("Test Samples", len(y_test))
+        st.markdown("### Test Samples")
+        st.write(len(y_test))
     
     st.markdown("---")
     
