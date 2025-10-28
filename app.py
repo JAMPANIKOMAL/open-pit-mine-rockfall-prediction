@@ -643,37 +643,19 @@ def make_prediction(model, input_data, metadata, label_encoder):
             st.markdown("---")
             st.subheader("Confidence Distribution")
 
-            # Determine display names for classes in the same order as model.classes_
-            model_classes = getattr(model, 'classes_', None)
+            # Use the same mapping as our prediction function for consistency
+            actual_mapping = {
+                0: 'Critical',  # Model class 0 = Critical
+                1: 'High',      # Model class 1 = High
+                2: 'Low',       # Model class 2 = Low  
+                3: 'Medium'     # Model class 3 = Medium
+            }
+            
+            # Get model classes and map them correctly
+            model_classes = getattr(model, 'classes_', [0, 1, 2, 3])
+            class_names_display = [actual_mapping.get(c, str(c)) for c in model_classes]
 
-            if model_classes is not None:
-                # If we have a label encoder, use it to map model.classes_
-                if label_encoder is not None:
-                    try:
-                        class_names_display = list(label_encoder.inverse_transform(model_classes))
-                    except Exception:
-                        class_names_display = [str(c) for c in model_classes]
-                else:
-                    # If metadata provides an ordered list, map integer class labels to that list
-                    if metadata and metadata.get('risk_categories'):
-                        mc = []
-                        for c in model_classes:
-                            if isinstance(c, (int, np.integer)):
-                                idx = int(c)
-                                try:
-                                    mc.append(metadata['risk_categories'][idx])
-                                except Exception:
-                                    mc.append(str(c))
-                            else:
-                                mc.append(str(c))
-                        class_names_display = mc
-                    else:
-                        class_names_display = [str(c) for c in model_classes]
-            else:
-                # Fallback to metadata order or default order
-                class_names_display = metadata.get('risk_categories', ['Low', 'Medium', 'High', 'Critical'])
-
-            # Build dataframe aligning probabilities with the display names
+            # Build dataframe aligning probabilities with the correct display names
             prob_df = pd.DataFrame({
                 'Risk Level': class_names_display,
                 'Probability': list(probabilities * 100)
