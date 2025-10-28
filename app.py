@@ -26,111 +26,75 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Initialize theme in session state
-if 'theme' not in st.session_state:
-    st.session_state.theme = 'light'
-
-# Function to apply theme-specific CSS
-def apply_theme_css(theme):
-    if theme == 'light':
-        bg_color = '#FFFFFF'
-        text_color = '#000000'
-        secondary_bg = '#F5F5F5'
-        border_color = '#CCCCCC'
-        metric_bg = '#F0F0F0'
-    else:  # dark
-        bg_color = '#0E1117'
-        text_color = '#FAFAFA'
-        secondary_bg = '#262730'
-        border_color = '#444444'
-        metric_bg = '#1E1E1E'
-    
-    st.markdown(f"""
+# Dark mode CSS styling
+st.markdown("""
     <style>
-    /* Override Streamlit default styles */
-    .stApp {{
-        background-color: {bg_color} !important;
-    }}
-    
-    /* Main content area */
-    .main .block-container {{
-        background-color: {bg_color} !important;
-        color: {text_color} !important;
-    }}
-    
-    /* Sidebar */
-    [data-testid="stSidebar"] {{
-        background-color: {secondary_bg} !important;
-    }}
-    
-    /* All text elements */
-    p, span, div, label, h1, h2, h3, h4, h5, h6 {{
-        color: {text_color} !important;
-    }}
-    
     /* Headers */
-    .main-header {{
+    .main-header {
         font-size: 2.5rem;
-        color: {text_color} !important;
+        color: #FFFFFF;
         text-align: center;
         font-weight: bold;
         margin-bottom: 1rem;
-        border-bottom: 3px solid {text_color};
+        border-bottom: 3px solid #4A90E2;
         padding-bottom: 10px;
-    }}
-    .sub-header {{
+    }
+    .sub-header {
         font-size: 1.2rem;
-        color: {text_color} !important;
+        color: #B0B0B0;
         text-align: center;
         margin-bottom: 2rem;
-    }}
+    }
     
-    /* Risk level boxes */
-    .risk-critical {{
-        background-color: #000000;
+    /* Risk level boxes - subtle professional colors */
+    .risk-critical {
+        background-color: #8B0000;
         color: white;
         padding: 20px;
-        border: 2px solid {border_color};
+        border: 2px solid #A52A2A;
         text-align: center;
         font-size: 1.5rem;
         font-weight: bold;
-    }}
-    .risk-high {{
-        background-color: #333333;
+        margin-bottom: 10px;
+    }
+    .risk-high {
+        background-color: #D35400;
         color: white;
         padding: 20px;
-        border: 2px solid {border_color};
+        border: 2px solid #E67E22;
         text-align: center;
         font-size: 1.5rem;
         font-weight: bold;
-    }}
-    .risk-medium {{
-        background-color: #666666;
+        margin-bottom: 10px;
+    }
+    .risk-medium {
+        background-color: #7D6608;
         color: white;
         padding: 20px;
-        border: 2px solid {border_color};
+        border: 2px solid #9A7D0A;
         text-align: center;
         font-size: 1.5rem;
         font-weight: bold;
-    }}
-    .risk-low {{
-        background-color: #CCCCCC;
-        color: black;
+        margin-bottom: 10px;
+    }
+    .risk-low {
+        background-color: #1E8449;
+        color: white;
         padding: 20px;
-        border: 2px solid {border_color};
+        border: 2px solid #27AE60;
         text-align: center;
         font-size: 1.5rem;
         font-weight: bold;
-    }}
-    .metric-card {{
-        background-color: {metric_bg};
+        margin-bottom: 10px;
+    }
+    .metric-card {
+        background-color: #1E1E1E;
         padding: 15px;
-        border: 1px solid {border_color};
-        border-left: 4px solid {text_color};
-        color: {text_color};
-    }}
+        border: 1px solid #444444;
+        border-left: 4px solid #4A90E2;
+    }
     </style>
-    """, unsafe_allow_html=True)
+""", unsafe_allow_html=True)
 
 # Load models and metadata
 @st.cache_resource
@@ -174,9 +138,6 @@ def load_test_data():
 
 # Main app
 def main():
-    # Apply theme CSS
-    apply_theme_css(st.session_state.theme)
-    
     # Header
     st.markdown('<div class="main-header">Open-Pit Mine Rockfall Risk Assessment System</div>', 
                 unsafe_allow_html=True)
@@ -191,14 +152,6 @@ def main():
     
     # Sidebar
     st.sidebar.title("Navigation")
-    
-    # Theme toggle button at top of sidebar
-    if st.sidebar.button("Toggle Light/Dark Mode"):
-        st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
-        st.rerun()
-    
-    st.sidebar.markdown(f"**Current Theme:** {st.session_state.theme.capitalize()}")
-    st.sidebar.markdown("---")
     
     page = st.sidebar.radio("Select Page", 
                             ["Home", 
@@ -512,11 +465,17 @@ def make_prediction(model, input_data, metadata, label_encoder):
             
             fig = px.bar(prob_df, x='Risk Level', y='Probability',
                         color='Probability',
-                        color_continuous_scale=['white', 'gray', 'black'],
+                        color_continuous_scale='Blues',
                         labels={'Probability': 'Probability (%)'},
                         title='Risk Level Probability Distribution')
             
-            fig.update_layout(showlegend=False, height=400)
+            fig.update_layout(
+                showlegend=False, 
+                height=400,
+                plot_bgcolor='#262730',
+                paper_bgcolor='#0E1117',
+                font=dict(color='white')
+            )
             st.plotly_chart(fig, use_container_width=True)
         
         # Input summary
@@ -566,25 +525,26 @@ def show_performance_page(best_model, metadata, label_encoder):
     
     fig, ax = plt.subplots(figsize=(10, 8))
     
-    # Use appropriate colormap based on theme
-    cmap = 'Greys' if st.session_state.theme == 'light' else 'gray'
+    # Dark theme for matplotlib
+    fig.patch.set_facecolor('#0E1117')
+    ax.set_facecolor('#262730')
     
-    sns.heatmap(cm, annot=True, fmt='d', cmap=cmap,
+    # Use professional color scheme for heatmap
+    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
                 xticklabels=class_names_sorted,
                 yticklabels=class_names_sorted,
-                cbar_kws={'label': 'Count'})
-    ax.set_xlabel('Predicted Risk Level', fontweight='bold')
-    ax.set_ylabel('True Risk Level', fontweight='bold')
-    ax.set_title('Confusion Matrix', fontweight='bold', fontsize=14)
+                cbar_kws={'label': 'Count'},
+                annot_kws={'color': 'white'})
     
-    # Set face color based on theme
-    if st.session_state.theme == 'dark':
-        fig.patch.set_facecolor('#1E1E1E')
-        ax.set_facecolor('#2D2D2D')
-        ax.xaxis.label.set_color('white')
-        ax.yaxis.label.set_color('white')
-        ax.title.set_color('white')
-        ax.tick_params(colors='white')
+    ax.set_xlabel('Predicted Risk Level', fontweight='bold', color='white')
+    ax.set_ylabel('True Risk Level', fontweight='bold', color='white')
+    ax.set_title('Confusion Matrix', fontweight='bold', fontsize=14, color='white')
+    ax.tick_params(colors='white')
+    
+    # Style colorbar
+    cbar = ax.collections[0].colorbar
+    cbar.ax.yaxis.set_tick_params(color='white')
+    plt.setp(plt.getp(cbar.ax.axes, 'yticklabels'), color='white')
     
     st.pyplot(fig)
     
@@ -601,7 +561,7 @@ def show_performance_page(best_model, metadata, label_encoder):
     report_df = pd.DataFrame(report).transpose()
     metrics_df = report_df.loc[class_names_sorted, ['precision', 'recall', 'f1-score', 'support']]
     
-    st.dataframe(metrics_df.style.background_gradient(cmap='binary', subset=['precision', 'recall', 'f1-score']))
+    st.dataframe(metrics_df.style.background_gradient(cmap='Blues', subset=['precision', 'recall', 'f1-score']))
     
     # Metrics explanation
     with st.expander("Understanding the Metrics"):

@@ -1,9 +1,9 @@
 [theme]
-# Light theme by default
-primaryColor = "#000000"
-backgroundColor = "#FFFFFF"
-secondaryBackgroundColor = "#F5F5F5"
-textColor = "#000000"
+# Professional dark theme
+primaryColor = "#4A90E2"
+backgroundColor = "#0E1117"
+secondaryBackgroundColor = "#262730"
+textColor = "#FAFAFA"
 font = "sans serif"
 
 [server]
