@@ -18,6 +18,10 @@ import plotly.graph_objects as go
 import plotly.express as px
 from pathlib import Path
 
+# Base directory for resolving data and model paths reliably when Streamlit
+# changes the current working directory. Use the app file location as root.
+BASE_DIR = Path(__file__).resolve().parent
+
 # Page configuration
 st.set_page_config(
     page_title="Rockfall Risk Assessment",
@@ -101,8 +105,8 @@ st.markdown("""
 def load_models():
     """Load trained models and metadata"""
     try:
-        model_path = Path('models/best_model.pkl')
-        metadata_path = Path('models/model_metadata.pkl')
+        model_path = BASE_DIR / 'models' / 'best_model.pkl'
+        metadata_path = BASE_DIR / 'models' / 'model_metadata.pkl'
         
         with open(model_path, 'rb') as f:
             best_model = pickle.load(f)
@@ -113,15 +117,16 @@ def load_models():
         # Try loading label encoder if it exists
         label_encoder = None
         if metadata.get('uses_encoded_labels', False):
-            le_path = Path('models/label_encoder.pkl')
+            le_path = BASE_DIR / 'models' / 'label_encoder.pkl'
             if le_path.exists():
                 with open(le_path, 'rb') as f:
                     label_encoder = pickle.load(f)
         
         return best_model, metadata, label_encoder
     except Exception as e:
+        # Provide the fully resolved paths in the message to make debugging easier
         st.error(f"Error loading models: {str(e)}")
-        st.info("Please ensure you have run notebooks 01-03 to generate the models.")
+        st.info(f"Checked paths: {model_path} and {metadata_path}.\nPlease ensure you have run notebooks 01-03 to generate the models and that the files exist.")
         return None, None, None
 
 # Load test data for analysis
@@ -129,11 +134,16 @@ def load_models():
 def load_test_data():
     """Load test data for model evaluation"""
     try:
-        X_test = pd.read_csv('data/processed/X_test.csv')
-        y_test = pd.read_csv('data/processed/y_test.csv').values.ravel()
+        x_path = BASE_DIR / 'data' / 'processed' / 'X_test.csv'
+        y_path = BASE_DIR / 'data' / 'processed' / 'y_test.csv'
+
+        X_test = pd.read_csv(str(x_path))
+        y_test = pd.read_csv(str(y_path)).values.ravel()
         return X_test, y_test
     except Exception as e:
+        # Show resolved path to help the user fix missing file issues
         st.warning(f"Test data not available: {str(e)}")
+        st.info(f"Tried loading: {x_path} and {y_path}")
         return None, None
 
 
