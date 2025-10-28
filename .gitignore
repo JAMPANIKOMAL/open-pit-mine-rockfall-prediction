@@ -23,4 +23,14 @@ dist/
 *.egg-info/
 
 # Data files
-data/
+# Allowing specific data files while ignoring others
+data/*
+!data/rockfall_data.csv
+!data/processed/
+!data/processed/X_test.csv
+!data/processed/X_train.csv
+!data/processed/y_test.csv
+!data/processed/y_train.csv
+
+# Ignore large files (>100MB)
+data/kaggle_mining/MiningProcess_Flotation_Plant_Database.csv
