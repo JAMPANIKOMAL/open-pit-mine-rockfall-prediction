@@ -8,16 +8,17 @@ This project explores the problem statement SIH25071 from the Smart India Hackat
 
 ## 1. Project Overview
 
-The objective is to utilize data analytics techniques and machine learning—specifically classification models—to predict the risk level of rockfall events in open-pit mines based on simulated sensor data. By analyzing factors like seismic activity, vibration, water pressure, displacement, and rainfall, we aim to classify risk into distinct categories (Low, Medium, High, Critical). This project demonstrates the application of data mining and visualization principles for enhancing mining safety.
+The objective is to utilize data analytics techniques and machine learning—specifically classification models—to predict the risk level of rockfall events in open-pit mines. This project combines **synthetic sensor data** (seismic activity, vibration, water pressure, displacement, rainfall) with **real-world landslide data from Kaggle** (temperature, humidity, moisture, slope angle) to create a comprehensive dataset. By analyzing these geological and environmental factors, we aim to classify risk into distinct categories (Low, Medium, High, Critical). This project demonstrates the application of data mining, integration, and visualization principles for enhancing mining safety.
 
 ---
 
 ## 2. Core Objectives
 
--   **Data Generation & Exploration:** Create a synthetic dataset simulating sensor readings relevant to rockfall conditions and perform initial exploratory data analysis.
--   **Data Pre-processing:** Clean the data, handle categorical features (risk levels) through encoding, and split the data for model training and evaluation.
--   **Predictive Modeling:** Apply and evaluate various classification algorithms (e.g., Logistic Regression, Random Forest, Support Vector Machine) to predict rockfall risk categories. Identify the best-performing model.
--   **Data Visualization & Interpretation:** Create visualizations like confusion matrices to evaluate model performance. Analyze results to understand the model's predictive capabilities and potentially identify key risk indicators (though feature importance wasn't directly available for the best model (SVC) in this run).
+-   **Data Generation & Integration:** Create synthetic rockfall sensor data AND integrate real-world landslide data from Kaggle to build a comprehensive, diverse dataset.
+-   **Exploratory Data Analysis:** Perform in-depth analysis including correlation analysis, distribution visualization, outlier detection, and missing value assessment.
+-   **Data Pre-processing:** Handle missing values through imputation, encode categorical features (risk levels), and split data for model training and evaluation.
+-   **Predictive Modeling:** Apply and evaluate 6+ classification algorithms (Logistic Regression, Random Forest, SVM, Decision Tree, Naive Bayes, KNN) with hyperparameter tuning to identify the best-performing model.
+-   **Data Visualization & Interpretation:** Create comprehensive visualizations including confusion matrices, ROC curves, precision-recall curves, and feature importance plots to evaluate and interpret model performance.
 
 ---
 
