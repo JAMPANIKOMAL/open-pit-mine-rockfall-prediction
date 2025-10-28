@@ -149,7 +149,7 @@ Your `kaggle.json` file should look like this:
     pip install -r requirements.txt
     ```
 
-4.  **Install Jupyter Kernel:**
+4.  **Setup Jupyter Kernel:**
     ```powershell
     python -m ipykernel install --user --name=rockfall-venv --display-name="Python (rockfall-venv)"
     ```
