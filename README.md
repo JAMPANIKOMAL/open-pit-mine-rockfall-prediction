@@ -186,6 +186,9 @@ Your `kaggle.json` file should look like this:
 **Problem:** `403 Forbidden` when downloading dataset
 - **Solution:** Go to [this dataset](https://www.kaggle.com/datasets/snehilmathur/landslide-dataset-for-classification) and click "Download" to accept terms, then re-run
 
+**Problem:** `ModuleNotFoundError: No module named 'cgi'` (Python 3.13+)
+- **Solution:** This project now uses `kaggle` CLI instead of `opendatasets` for Python 3.13 compatibility. Make sure to run the first cell in each notebook to install dependencies.
+
 **Problem:** Notebook hangs during download
 - **Solution:** Check your internet connection. The dataset is ~1MB and should download quickly
 
