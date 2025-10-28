@@ -10,6 +10,28 @@ This project explores the problem statement SIH25071 from the Smart India Hackat
 
 The objective is to utilize data analytics techniques and machine learning—specifically classification models—to predict the risk level of rockfall events in open-pit mines. This project combines **synthetic sensor data** (seismic activity, vibration, water pressure, displacement, rainfall) with **real-world landslide data from Kaggle** (temperature, humidity, moisture, slope angle) to create a comprehensive dataset. By analyzing these geological and environmental factors, we aim to classify risk into distinct categories (Low, Medium, High, Critical). This project demonstrates the application of data mining, integration, and visualization principles for enhancing mining safety.
 
+### Why Synthetic Data?
+
+While real-world rockfall sensor data from mines is ideal, it faces several practical challenges:
+
+1. **Proprietary & Confidential:** Mining companies treat sensor data as proprietary information due to safety and competitive reasons, making it rarely publicly available.
+
+2. **Safety & Liability Concerns:** Real rockfall incidents involve fatalities and legal implications, making companies hesitant to share incident data.
+
+3. **Lack of Public Datasets:** Unlike general landslides, specific "rockfall in open-pit mines with continuous sensor monitoring" datasets are virtually non-existent on platforms like Kaggle.
+
+4. **Academic Demonstration:** For a DAV course project, synthetic data allows us to:
+   - **Control feature relationships** to demonstrate clear risk patterns
+   - **Ensure balanced classes** for better model training
+   - **Simulate critical scenarios** that might be rare in real data
+   - **Validate our modeling pipeline** before applying to real-world data
+
+By **combining synthetic rockfall data with real landslide data from Kaggle**, we create a rich, diverse dataset that:
+- Includes mine-specific sensors (seismic, vibration, water pressure) via synthesis
+- Incorporates real environmental patterns (temperature, humidity, slope) from Kaggle
+- Provides ~15,000 samples for robust model training
+- Demonstrates data integration skills crucial for real-world analytics
+
 ---
 
 ## 2. Core Objectives
@@ -22,7 +44,43 @@ The objective is to utilize data analytics techniques and machine learning—spe
 
 ---
 
-## 3. Technology Stack
+## 3. Dataset Composition
+
+Our integrated dataset (~15,000 samples) combines two complementary data sources:
+
+### Synthetic Rockfall Sensor Data (10,000 samples)
+**Purpose:** Simulate mine-specific sensor readings not available in public datasets
+
+**Features:**
+- `seismic_activity` - Ground vibration from geological instability (Richter scale equivalent)
+- `vibration_level` - Equipment/blasting vibration readings (mm/s)
+- `joint_water_pressure` - Water pressure in rock joints (kPa)
+- `displacement_mm` - Rock face displacement measurements (mm)
+- `rainfall_mm` - Precipitation levels (mm)
+
+**Risk Distribution:** Balanced across Low (25%), Medium (25%), High (25%), Critical (25%)
+
+### Real Kaggle Landslide Data (5,000 samples)
+**Source:** [Landslide Dataset for Classification](https://www.kaggle.com/datasets/snehilmathur/landslide-dataset-for-classification)
+
+**Features:**
+- `Temperature` - Ambient temperature (°C)
+- `Humidity` - Atmospheric humidity (%)
+- `Rain` - Rainfall intensity (mm)
+- `Moisture` - Soil moisture content (%)
+- `Slope_Angle` - Terrain slope angle (degrees)
+- `Soil_Type` - Geological composition (Clay, Sandy, Loamy, Rocky)
+
+**Risk Distribution:** Real-world patterns with class imbalance (standardized to our categories)
+
+### Data Integration Strategy
+- **Missing value handling:** Median imputation for features unique to each source
+- **Risk category alignment:** Standardized to 4 levels (Low, Medium, High, Critical)
+- **Feature diversity:** 14+ features covering geological, environmental, and geotechnical factors
+
+---
+
+## 4. Technology Stack
 
 -   **Language:** Python 3
 -   **Data Science & ML:** pandas, numpy, scikit-learn
@@ -31,7 +89,7 @@ The objective is to utilize data analytics techniques and machine learning—spe
 
 ---
 
-## 4. How to Run
+## 5. How to Run
 
 1.  **Environment Setup:**
     * Clone the repository.
