@@ -26,66 +26,111 @@ st.set_page_config(
     initial_sidebar_state="expanded"
 )
 
-# Custom CSS for better styling
-st.markdown("""
+# Initialize theme in session state
+if 'theme' not in st.session_state:
+    st.session_state.theme = 'light'
+
+# Function to apply theme-specific CSS
+def apply_theme_css(theme):
+    if theme == 'light':
+        bg_color = '#FFFFFF'
+        text_color = '#000000'
+        secondary_bg = '#F5F5F5'
+        border_color = '#CCCCCC'
+        metric_bg = '#F0F0F0'
+    else:  # dark
+        bg_color = '#0E1117'
+        text_color = '#FAFAFA'
+        secondary_bg = '#262730'
+        border_color = '#444444'
+        metric_bg = '#1E1E1E'
+    
+    st.markdown(f"""
     <style>
-    .main-header {
+    /* Override Streamlit default styles */
+    .stApp {{
+        background-color: {bg_color} !important;
+    }}
+    
+    /* Main content area */
+    .main .block-container {{
+        background-color: {bg_color} !important;
+        color: {text_color} !important;
+    }}
+    
+    /* Sidebar */
+    [data-testid="stSidebar"] {{
+        background-color: {secondary_bg} !important;
+    }}
+    
+    /* All text elements */
+    p, span, div, label, h1, h2, h3, h4, h5, h6 {{
+        color: {text_color} !important;
+    }}
+    
+    /* Headers */
+    .main-header {{
         font-size: 2.5rem;
-        color: #1f77b4;
+        color: {text_color} !important;
         text-align: center;
         font-weight: bold;
         margin-bottom: 1rem;
-    }
-    .sub-header {
+        border-bottom: 3px solid {text_color};
+        padding-bottom: 10px;
+    }}
+    .sub-header {{
         font-size: 1.2rem;
-        color: #ff7f0e;
+        color: {text_color} !important;
         text-align: center;
         margin-bottom: 2rem;
-    }
-    .risk-critical {
-        background-color: #8e44ad;
+    }}
+    
+    /* Risk level boxes */
+    .risk-critical {{
+        background-color: #000000;
         color: white;
         padding: 20px;
-        border-radius: 10px;
+        border: 2px solid {border_color};
         text-align: center;
         font-size: 1.5rem;
         font-weight: bold;
-    }
-    .risk-high {
-        background-color: #e74c3c;
+    }}
+    .risk-high {{
+        background-color: #333333;
         color: white;
         padding: 20px;
-        border-radius: 10px;
+        border: 2px solid {border_color};
         text-align: center;
         font-size: 1.5rem;
         font-weight: bold;
-    }
-    .risk-medium {
-        background-color: #f39c12;
+    }}
+    .risk-medium {{
+        background-color: #666666;
         color: white;
         padding: 20px;
-        border-radius: 10px;
+        border: 2px solid {border_color};
         text-align: center;
         font-size: 1.5rem;
         font-weight: bold;
-    }
-    .risk-low {
-        background-color: #2ecc71;
-        color: white;
+    }}
+    .risk-low {{
+        background-color: #CCCCCC;
+        color: black;
         padding: 20px;
-        border-radius: 10px;
+        border: 2px solid {border_color};
         text-align: center;
         font-size: 1.5rem;
         font-weight: bold;
-    }
-    .metric-card {
-        background-color: #f0f2f6;
+    }}
+    .metric-card {{
+        background-color: {metric_bg};
         padding: 15px;
-        border-radius: 8px;
-        border-left: 5px solid #1f77b4;
-    }
+        border: 1px solid {border_color};
+        border-left: 4px solid {text_color};
+        color: {text_color};
+    }}
     </style>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 # Load models and metadata
 @st.cache_resource
@@ -129,8 +174,11 @@ def load_test_data():
 
 # Main app
 def main():
+    # Apply theme CSS
+    apply_theme_css(st.session_state.theme)
+    
     # Header
-    st.markdown('<div class="main-header">⛏️ Open-Pit Mine Rockfall Risk Assessment System</div>', 
+    st.markdown('<div class="main-header">Open-Pit Mine Rockfall Risk Assessment System</div>', 
                 unsafe_allow_html=True)
     st.markdown('<div class="sub-header">AI-Powered Safety Monitoring for Mining Operations</div>', 
                 unsafe_allow_html=True)
@@ -142,16 +190,25 @@ def main():
         st.stop()
     
     # Sidebar
-    st.sidebar.title("📊 Navigation")
+    st.sidebar.title("Navigation")
+    
+    # Theme toggle button at top of sidebar
+    if st.sidebar.button("Toggle Light/Dark Mode"):
+        st.session_state.theme = 'dark' if st.session_state.theme == 'light' else 'light'
+        st.rerun()
+    
+    st.sidebar.markdown(f"**Current Theme:** {st.session_state.theme.capitalize()}")
+    st.sidebar.markdown("---")
+    
     page = st.sidebar.radio("Select Page", 
-                            ["🏠 Home", 
-                             "🔮 Risk Prediction", 
-                             "📈 Model Performance",
-                             "📚 About Project"])
+                            ["Home", 
+                             "Risk Prediction", 
+                             "Model Performance",
+                             "About Project"])
     
     # Display model info in sidebar
     st.sidebar.markdown("---")
-    st.sidebar.markdown("### 🤖 Current Model")
+    st.sidebar.markdown("### Current Model")
     st.sidebar.info(f"""
     **Model:** {metadata.get('model_name', 'Unknown')}  
     **Accuracy:** {metadata.get('test_accuracy', 0)*100:.2f}%  
@@ -159,13 +216,13 @@ def main():
     """)
     
     # Page routing
-    if page == "🏠 Home":
+    if page == "Home":
         show_home_page(metadata)
-    elif page == "🔮 Risk Prediction":
+    elif page == "Risk Prediction":
         show_prediction_page(best_model, metadata, label_encoder)
-    elif page == "📈 Model Performance":
+    elif page == "Model Performance":
         show_performance_page(best_model, metadata, label_encoder)
-    elif page == "📚 About Project":
+    elif page == "About Project":
         show_about_page()
 
 def show_home_page(metadata):
@@ -191,7 +248,7 @@ def show_home_page(metadata):
     st.markdown("---")
     
     # Project overview
-    st.header("🎯 Project Overview")
+    st.header("Project Overview")
     st.write("""
     This AI-powered system predicts rockfall risk levels in open-pit mining operations using 
     real-time sensor data. The system analyzes multiple environmental and geological parameters 
@@ -201,56 +258,56 @@ def show_home_page(metadata):
     col1, col2 = st.columns(2)
     
     with col1:
-        st.subheader("📊 Key Features")
+        st.subheader("Key Features")
         st.markdown("""
-        - **Real-time Risk Assessment**: Instant predictions from sensor data
-        - **Multi-level Classification**: 4-tier risk severity system
-        - **Advanced ML Models**: XGBoost, LightGBM, ensemble methods
-        - **Hybrid Dataset**: 20,000+ samples (synthetic + real mining data)
-        - **High Accuracy**: State-of-the-art performance metrics
+        - Real-time Risk Assessment: Instant predictions from sensor data
+        - Multi-level Classification: 4-tier risk severity system
+        - Advanced ML Models: XGBoost, LightGBM, ensemble methods
+        - Hybrid Dataset: 20,000+ samples (synthetic + real mining data)
+        - High Accuracy: State-of-the-art performance metrics
         """)
     
     with col2:
-        st.subheader("🔬 Monitored Parameters")
+        st.subheader("Monitored Parameters")
         st.markdown("""
-        - **Seismic Activity**: Ground vibrations and tremors
-        - **Vibration Sensors**: Structural movement detection
-        - **Water Pressure**: Pore pressure in rock formations
-        - **Ground Displacement**: Slope deformation monitoring
-        - **Rainfall**: Precipitation impact on stability
+        - Seismic Activity: Ground vibrations and tremors
+        - Vibration Sensors: Structural movement detection
+        - Water Pressure: Pore pressure in rock formations
+        - Ground Displacement: Slope deformation monitoring
+        - Rainfall: Precipitation impact on stability
         """)
     
     st.markdown("---")
     
     # Risk level explanation
-    st.header("🚦 Risk Level Guide")
+    st.header("Risk Level Guide")
     
     col1, col2, col3, col4 = st.columns(4)
     
     with col1:
-        st.markdown('<div class="risk-low">✅ LOW</div>', unsafe_allow_html=True)
+        st.markdown('<div class="risk-low">LOW</div>', unsafe_allow_html=True)
         st.write("**Safe Conditions**")
         st.write("Normal operations")
     
     with col2:
-        st.markdown('<div class="risk-medium">⚠️ MEDIUM</div>', unsafe_allow_html=True)
+        st.markdown('<div class="risk-medium">MEDIUM</div>', unsafe_allow_html=True)
         st.write("**Monitor Closely**")
         st.write("Increase surveillance")
     
     with col3:
-        st.markdown('<div class="risk-high">🚨 HIGH</div>', unsafe_allow_html=True)
+        st.markdown('<div class="risk-high">HIGH</div>', unsafe_allow_html=True)
         st.write("**Action Required**")
         st.write("Restrict access zones")
     
     with col4:
-        st.markdown('<div class="risk-critical">☢️ CRITICAL</div>', unsafe_allow_html=True)
+        st.markdown('<div class="risk-critical">CRITICAL</div>', unsafe_allow_html=True)
         st.write("**Immediate Evacuation**")
         st.write("Emergency protocols")
 
 def show_prediction_page(best_model, metadata, label_encoder):
     """Interactive prediction page"""
     
-    st.header("🔮 Rockfall Risk Prediction")
+    st.header("Rockfall Risk Prediction")
     st.write("Enter sensor readings to get real-time risk assessment")
     
     # Input method selection
@@ -258,7 +315,7 @@ def show_prediction_page(best_model, metadata, label_encoder):
                             ["Manual Entry", "Upload CSV File", "Use Sample Data"])
     
     if input_method == "Manual Entry":
-        st.subheader("📝 Enter Sensor Readings")
+        st.subheader("Enter Sensor Readings")
         
         col1, col2 = st.columns(2)
         
@@ -285,11 +342,11 @@ def show_prediction_page(best_model, metadata, label_encoder):
             'rainfall': [rainfall]
         })
         
-        if st.button("🔍 Predict Risk Level", type="primary"):
+        if st.button("Predict Risk Level", type="primary"):
             make_prediction(best_model, input_data, metadata, label_encoder)
     
     elif input_method == "Upload CSV File":
-        st.subheader("📤 Upload CSV File")
+        st.subheader("Upload CSV File")
         st.info("CSV should contain columns: seismic_activity, vibration_sensor, water_pressure, ground_displacement, rainfall")
         
         uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
@@ -300,7 +357,7 @@ def show_prediction_page(best_model, metadata, label_encoder):
                 st.write("Uploaded Data Preview:")
                 st.dataframe(input_data.head())
                 
-                if st.button("🔍 Predict Risk Levels", type="primary"):
+                if st.button("Predict Risk Levels", type="primary"):
                     predictions = best_model.predict(input_data)
                     
                     if label_encoder:
@@ -317,7 +374,7 @@ def show_prediction_page(best_model, metadata, label_encoder):
                     # Download results
                     csv = results.to_csv(index=False)
                     st.download_button(
-                        label="📥 Download Predictions",
+                        label="Download Predictions",
                         data=csv,
                         file_name="rockfall_predictions.csv",
                         mime="text/csv"
@@ -326,7 +383,7 @@ def show_prediction_page(best_model, metadata, label_encoder):
                 st.error(f"Error processing file: {str(e)}")
     
     else:  # Sample Data
-        st.subheader("📊 Sample Scenarios")
+        st.subheader("Sample Scenarios")
         
         sample_scenarios = {
             "Safe Conditions (Low Risk)": {
@@ -366,7 +423,7 @@ def show_prediction_page(best_model, metadata, label_encoder):
         st.write("**Scenario Parameters:**")
         st.dataframe(input_data)
         
-        if st.button("🔍 Predict Risk Level", type="primary"):
+        if st.button("Predict Risk Level", type="primary"):
             make_prediction(best_model, input_data, metadata, label_encoder)
 
 def make_prediction(model, input_data, metadata, label_encoder):
@@ -390,7 +447,7 @@ def make_prediction(model, input_data, metadata, label_encoder):
         
         # Display prediction
         st.markdown("---")
-        st.subheader("🎯 Prediction Result")
+        st.subheader("Prediction Result")
         
         # Risk level display
         risk_classes = {
@@ -406,34 +463,34 @@ def make_prediction(model, input_data, metadata, label_encoder):
         
         # Recommendations
         st.markdown("---")
-        st.subheader("📋 Recommended Actions")
+        st.subheader("Recommended Actions")
         
         recommendations = {
             'Low': [
-                "✅ Continue normal mining operations",
-                "📊 Maintain regular monitoring schedule",
-                "📝 Document current sensor readings"
+                "Continue normal mining operations",
+                "Maintain regular monitoring schedule",
+                "Document current sensor readings"
             ],
             'Medium': [
-                "⚠️ Increase monitoring frequency",
-                "👀 Visual inspection of slope areas",
-                "📞 Alert geological team",
-                "🚧 Consider restricting non-essential personnel"
+                "Increase monitoring frequency",
+                "Visual inspection of slope areas",
+                "Alert geological team",
+                "Consider restricting non-essential personnel"
             ],
             'High': [
-                "🚨 Restrict access to high-risk zones",
-                "👷 Evacuate non-essential personnel",
-                "📞 Emergency team on standby",
-                "📹 Continuous real-time monitoring",
-                "🛑 Halt operations in affected areas"
+                "Restrict access to high-risk zones",
+                "Evacuate non-essential personnel",
+                "Emergency team on standby",
+                "Continuous real-time monitoring",
+                "Halt operations in affected areas"
             ],
             'Critical': [
-                "☢️ IMMEDIATE EVACUATION REQUIRED",
-                "🚨 Activate emergency protocols",
-                "📞 Alert all personnel immediately",
-                "🛑 Complete shutdown of operations",
-                "🚁 Emergency response team deployment",
-                "📋 Incident command center activation"
+                "IMMEDIATE EVACUATION REQUIRED",
+                "Activate emergency protocols",
+                "Alert all personnel immediately",
+                "Complete shutdown of operations",
+                "Emergency response team deployment",
+                "Incident command center activation"
             ]
         }
         
@@ -443,7 +500,7 @@ def make_prediction(model, input_data, metadata, label_encoder):
         # Probability distribution
         if has_proba:
             st.markdown("---")
-            st.subheader("📊 Confidence Distribution")
+            st.subheader("Confidence Distribution")
             
             class_names = metadata.get('risk_categories', ['Low', 'Medium', 'High', 'Critical'])
             class_names_sorted = sorted(class_names)
@@ -455,7 +512,7 @@ def make_prediction(model, input_data, metadata, label_encoder):
             
             fig = px.bar(prob_df, x='Risk Level', y='Probability',
                         color='Probability',
-                        color_continuous_scale=['green', 'yellow', 'orange', 'red'],
+                        color_continuous_scale=['white', 'gray', 'black'],
                         labels={'Probability': 'Probability (%)'},
                         title='Risk Level Probability Distribution')
             
@@ -464,7 +521,7 @@ def make_prediction(model, input_data, metadata, label_encoder):
         
         # Input summary
         st.markdown("---")
-        st.subheader("📊 Input Data Summary")
+        st.subheader("Input Data Summary")
         st.dataframe(input_data)
         
     except Exception as e:
@@ -473,7 +530,7 @@ def make_prediction(model, input_data, metadata, label_encoder):
 def show_performance_page(best_model, metadata, label_encoder):
     """Model performance analysis page"""
     
-    st.header("📈 Model Performance Analysis")
+    st.header("Model Performance Analysis")
     
     # Load test data
     X_test, y_test = load_test_data()
@@ -500,7 +557,7 @@ def show_performance_page(best_model, metadata, label_encoder):
     st.markdown("---")
     
     # Confusion Matrix
-    st.subheader("🔲 Confusion Matrix")
+    st.subheader("Confusion Matrix")
     
     class_names = metadata.get('risk_categories', ['Low', 'Medium', 'High', 'Critical'])
     class_names_sorted = sorted(class_names)
@@ -508,19 +565,33 @@ def show_performance_page(best_model, metadata, label_encoder):
     cm = confusion_matrix(y_test, y_pred)
     
     fig, ax = plt.subplots(figsize=(10, 8))
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
+    
+    # Use appropriate colormap based on theme
+    cmap = 'Greys' if st.session_state.theme == 'light' else 'gray'
+    
+    sns.heatmap(cm, annot=True, fmt='d', cmap=cmap,
                 xticklabels=class_names_sorted,
                 yticklabels=class_names_sorted,
                 cbar_kws={'label': 'Count'})
     ax.set_xlabel('Predicted Risk Level', fontweight='bold')
     ax.set_ylabel('True Risk Level', fontweight='bold')
     ax.set_title('Confusion Matrix', fontweight='bold', fontsize=14)
+    
+    # Set face color based on theme
+    if st.session_state.theme == 'dark':
+        fig.patch.set_facecolor('#1E1E1E')
+        ax.set_facecolor('#2D2D2D')
+        ax.xaxis.label.set_color('white')
+        ax.yaxis.label.set_color('white')
+        ax.title.set_color('white')
+        ax.tick_params(colors='white')
+    
     st.pyplot(fig)
     
     st.markdown("---")
     
     # Classification Report
-    st.subheader("📊 Classification Report")
+    st.subheader("Classification Report")
     
     from sklearn.metrics import classification_report
     report = classification_report(y_test, y_pred, 
@@ -530,10 +601,10 @@ def show_performance_page(best_model, metadata, label_encoder):
     report_df = pd.DataFrame(report).transpose()
     metrics_df = report_df.loc[class_names_sorted, ['precision', 'recall', 'f1-score', 'support']]
     
-    st.dataframe(metrics_df.style.background_gradient(cmap='RdYlGn', subset=['precision', 'recall', 'f1-score']))
+    st.dataframe(metrics_df.style.background_gradient(cmap='binary', subset=['precision', 'recall', 'f1-score']))
     
     # Metrics explanation
-    with st.expander("📖 Understanding the Metrics"):
+    with st.expander("Understanding the Metrics"):
         st.write("""
         **Precision**: Of all predictions for a risk level, how many were correct?
         - High precision = fewer false alarms
@@ -550,10 +621,10 @@ def show_performance_page(best_model, metadata, label_encoder):
 def show_about_page():
     """About page with project information"""
     
-    st.header("📚 About This Project")
+    st.header("About This Project")
     
     st.markdown("""
-    ## 🎓 Academic Project
+    ## Academic Project
     
     **Course**: Data Analytics & Visualization (G5AD21DAV)  
     **Institution**: Rashtriya Raksha University  
@@ -562,7 +633,7 @@ def show_about_page():
     
     ---
     
-    ## 🎯 Project Objectives
+    ## Project Objectives
     
     This project develops an AI-powered system for real-time rockfall risk assessment in 
     open-pit mining operations. The system uses machine learning to analyze sensor data 
@@ -570,17 +641,17 @@ def show_about_page():
     
     ---
     
-    ## 📊 Dataset
+    ## Dataset
     
     **Hybrid Approach (20,000+ samples)**:
-    - ✓ Synthetic mine slope monitoring data (10,000 samples)
-    - ✓ Real industrial mining process data from Kaggle (10,000+ samples)
-    - ✓ Features: Seismic activity, vibration, water pressure, displacement, rainfall
-    - ✓ 4-level classification: Low, Medium, High, Critical
+    - Synthetic mine slope monitoring data (10,000 samples)
+    - Real industrial mining process data from Kaggle (10,000+ samples)
+    - Features: Seismic activity, vibration, water pressure, displacement, rainfall
+    - 4-level classification: Low, Medium, High, Critical
     
     ---
     
-    ## 🤖 Machine Learning Models
+    ## Machine Learning Models
     
     **Models Evaluated**:
     - Logistic Regression
@@ -599,7 +670,7 @@ def show_about_page():
     
     ---
     
-    ## 🛠️ Technology Stack
+    ## Technology Stack
     
     - **Data Processing**: Pandas, NumPy
     - **Machine Learning**: Scikit-learn, XGBoost, LightGBM
@@ -609,7 +680,7 @@ def show_about_page():
     
     ---
     
-    ## 📁 Project Structure
+    ## Project Structure
     
     ```
     open-pit-mine-rockfall-prediction/
@@ -632,13 +703,13 @@ def show_about_page():
     
     ---
     
-    ## 🌐 GitHub Repository
+    ## GitHub Repository
     
     **Repository**: [github.com/JAMPANIKOMAL/open-pit-mine-rockfall-prediction](https://github.com/JAMPANIKOMAL/open-pit-mine-rockfall-prediction)
     
     ---
     
-    ## 📧 Contact
+    ## Contact
     
     For questions or collaboration opportunities:
     - **GitHub**: JAMPANIKOMAL
@@ -646,22 +717,13 @@ def show_about_page():
     
     ---
     
-    ## 🙏 Acknowledgments
+    ## Acknowledgments
     
     - Rashtriya Raksha University for academic support
     - Kaggle community for mining dataset (edumagalhaes)
     - Open-source ML/AI community
     - Smart India Hackathon (SIH25071 Problem Statement)
     """)
-    
-    # Footer
-    st.markdown("---")
-    st.markdown("""
-    <div style='text-align: center; color: gray;'>
-        <p>© 2025 Open-Pit Mine Rockfall Risk Assessment System</p>
-        <p>Developed for Data Analytics & Visualization Course</p>
-    </div>
-    """, unsafe_allow_html=True)
 
 # Run the app
 if __name__ == "__main__":
