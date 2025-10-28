@@ -28,8 +28,8 @@ While real-world rockfall sensor data from mines is ideal, it faces several prac
 
 By **combining synthetic rockfall data with real landslide data from Kaggle**, we create a rich, diverse dataset that:
 - Includes mine-specific sensors (seismic, vibration, water pressure) via synthesis
-- Incorporates real environmental patterns (temperature, humidity, slope) from Kaggle
-- Provides ~15,000 samples for robust model training
+- Incorporates real environmental patterns from Kaggle's landslide risk assessment data
+- Provides ~10,700 samples for robust model training
 - Demonstrates data integration skills crucial for real-world analytics
 
 ---
@@ -46,7 +46,7 @@ By **combining synthetic rockfall data with real landslide data from Kaggle**, w
 
 ## 3. Dataset Composition
 
-Our integrated dataset (~15,000 samples) combines two complementary data sources:
+Our integrated dataset (~10,700 samples) combines two complementary data sources:
 
 ### Synthetic Rockfall Sensor Data (10,000 samples)
 **Purpose:** Simulate mine-specific sensor readings not available in public datasets
@@ -60,8 +60,8 @@ Our integrated dataset (~15,000 samples) combines two complementary data sources
 
 **Risk Distribution:** Balanced across Low (25%), Medium (25%), High (25%), Critical (25%)
 
-### Real Kaggle Landslide Data (5,000 samples)
-**Source:** [Landslide Dataset for Classification](https://www.kaggle.com/datasets/snehilmathur/landslide-dataset-for-classification)
+### Real Kaggle Landslide Data (~700 samples)
+**Source:** [Landslide Risk Assessment Factors](https://www.kaggle.com/datasets/mohammadrahdanmofrad/landslide-risk-assessment-factors)
 
 **Features:**
 - `Temperature` - Ambient temperature (°C)
@@ -119,14 +119,14 @@ mv ~/Downloads/kaggle.json ~/.kaggle/
 chmod 600 ~/.kaggle/kaggle.json
 ```
 
-#### Step 3: Verify Setup
-Your `kaggle.json` file should look like this:
-```json
-{
-  "username": "your_kaggle_username",
-  "key": "your_api_key_here"
-}
-```
+#### Step 3: Accept Dataset Terms on Kaggle
+**IMPORTANT:** Before running the notebooks, you must accept the dataset's terms:
+1. Visit: https://www.kaggle.com/datasets/mohammadrahdanmofrad/landslide-risk-assessment-factors
+2. Log in to your Kaggle account
+3. Click the **"Download"** button (this accepts the terms)
+4. You can close the page (download will be handled by the notebook)
+
+This step is required only once. If you skip this, you'll get a "403 Forbidden" error.
 
 ---
 
@@ -184,7 +184,7 @@ Your `kaggle.json` file should look like this:
 - **Solution:** Ensure `kaggle.json` is in `C:\Users\<YourUsername>\.kaggle\` (Windows) or `~/.kaggle/` (Mac/Linux)
 
 **Problem:** `403 Forbidden` when downloading dataset
-- **Solution:** Go to [this dataset](https://www.kaggle.com/datasets/snehilmathur/landslide-dataset-for-classification) and click "Download" to accept terms, then re-run
+- **Solution:** Go to [this dataset](https://www.kaggle.com/datasets/mohammadrahdanmofrad/landslide-risk-assessment-factors) and click "Download" to accept terms, then re-run
 
 **Problem:** `ModuleNotFoundError: No module named 'cgi'` (Python 3.13+)
 - **Solution:** This project now uses `kaggle` CLI instead of `opendatasets` for Python 3.13 compatibility. Make sure to run the first cell in each notebook to install dependencies.
