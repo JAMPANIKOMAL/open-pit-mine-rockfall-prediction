@@ -243,48 +243,46 @@ def prepare_input_for_model(df: pd.DataFrame, metadata: dict, model=None) -> pd.
 def _map_prediction_to_label(pred, metadata, label_encoder):
     """Robust mapping from model prediction to human-friendly label.
 
-    Handles:
-    - label encoder if present
-    - integer class indices (e.g., 0 -> 'Low') using metadata['risk_categories']
-    - numeric strings like '0'
-    - case-insensitive match to metadata names
-    - fallback to str(pred)
+    Based on analysis, the model training used alphabetical encoding, but we want
+    to show the logical relationship: higher sensor values = higher risk
     """
-    # Try label encoder first
     try:
         if label_encoder is not None:
             try:
                 return label_encoder.inverse_transform([pred])[0]
             except Exception:
-                # fall through to other strategies
                 pass
 
-        # If it's an integer-type, map using metadata list if available
+        # Based on training data analysis:
+        # Label 0: highest sensor values (originally Critical, but was encoded as 0)
+        # Label 1: medium-high values (originally High, but was encoded as 1) 
+        # Label 2: lowest sensor values (originally Low, but was encoded as 2)
+        # Label 3: low-medium values (originally Medium, but was encoded as 3)
+        #
+        # The model learned: high sensor values → predict 0, low sensor values → predict 2
+        # We want to show: high sensor values → "Critical", low sensor values → "Low"
+        
+        actual_mapping = {
+            0: 'Critical',  # Model predicts 0 for highest sensor values
+            1: 'High',      # Model predicts 1 for medium-high sensor values  
+            2: 'Low',       # Model predicts 2 for lowest sensor values
+            3: 'Medium'     # Model predicts 3 for low-medium sensor values
+        }
+        
         if isinstance(pred, (int, np.integer)):
-            if metadata and metadata.get('risk_categories'):
-                try:
-                    return metadata['risk_categories'][int(pred)]
-                except Exception:
-                    return str(pred)
-
-        # If it's a numeric string like '0' or '1'
+            return actual_mapping.get(int(pred), str(pred))
+            
         if isinstance(pred, str) and pred.isdigit():
-            if metadata and metadata.get('risk_categories'):
-                try:
-                    return metadata['risk_categories'][int(pred)]
-                except Exception:
-                    return pred
-
-        # Try case-insensitive matching to metadata labels
-        if metadata and metadata.get('risk_categories'):
-            for name in metadata['risk_categories']:
-                if str(pred).strip().lower() == str(name).strip().lower():
-                    return name
+            return actual_mapping.get(int(pred), pred)
+            
+        # Try case-insensitive matching 
+        for name in actual_mapping.values():
+            if str(pred).strip().lower() == str(name).strip().lower():
+                return name
 
     except Exception:
         pass
 
-    # Fallback
     return str(pred)
 
 # Main app
@@ -425,7 +423,7 @@ def show_prediction_page(best_model, metadata, label_encoder):
     st.header("Rockfall Risk Prediction")
     st.write("Enter sensor readings to get real-time risk assessment")
     
-    st.info("ℹ️ **Note**: In this model, lower sensor readings often indicate higher risk levels, as they may suggest sensor failures, equipment issues, or concerning subsurface conditions that require immediate attention.")
+    st.info("ℹ️ **Note**: Higher sensor readings indicate higher risk levels - more seismic activity, vibration, water pressure, ground displacement, and rainfall suggest increased rockfall danger.")
     
     # Input method selection
     input_method = st.radio("Select Input Method:", 
@@ -514,32 +512,32 @@ def show_prediction_page(best_model, metadata, label_encoder):
         
         sample_scenarios = {
             "Safe Conditions (Low Risk)": {
-                'seismic_activity': 1.5,
-                'vibration_sensor': 6.0,
-                'water_pressure': 450.0,
-                'ground_displacement': 10.0,
-                'rainfall': 60.0
-            },
-            "Moderate Warning (Medium Risk)": {
-                'seismic_activity': 0.6,
-                'vibration_sensor': 3.5,
-                'water_pressure': 250.0,
-                'ground_displacement': 7.0,
-                'rainfall': 32.0
-            },
-            "High Alert (High Risk)": {
-                'seismic_activity': 0.2,
-                'vibration_sensor': 1.2,
-                'water_pressure': 130.0,
+                'seismic_activity': 0.15,
+                'vibration_sensor': 1.0,
+                'water_pressure': 150.0,
                 'ground_displacement': 3.0,
                 'rainfall': 15.0
             },
+            "Moderate Warning (Medium Risk)": {
+                'seismic_activity': 0.35,
+                'vibration_sensor': 2.3,
+                'water_pressure': 220.0,
+                'ground_displacement': 7.0,
+                'rainfall': 30.0
+            },
+            "High Alert (High Risk)": {
+                'seismic_activity': 0.65,
+                'vibration_sensor': 3.0,
+                'water_pressure': 350.0,
+                'ground_displacement': 8.0,
+                'rainfall': 45.0
+            },
             "Emergency (Critical Risk)": {
-                'seismic_activity': 0.05,
-                'vibration_sensor': 0.4,
-                'water_pressure': 180.0,
-                'ground_displacement': 4.0,
-                'rainfall': 20.0
+                'seismic_activity': 1.2,
+                'vibration_sensor': 5.5,
+                'water_pressure': 500.0,
+                'ground_displacement': 10.5,
+                'rainfall': 60.0
             }
         }
         
