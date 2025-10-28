@@ -1,46 +1,61 @@
-# AI-Based Rockfall Prediction System
+# Rockfall Risk Assessment via Data Analytics & Visualization
 
-A data science project to predict rockfall risk in open-pit mines, inspired by the Smart India Hackathon (SIH) problem statement.
+_A Project for Data Analytics & Visualization (DAV) Course_
 
-## Project Vision
+This project explores the problem statement SIH25071 from the Smart India Hackathon, adapted for the Data Analytics & Visualization (DAV) course (G5AD21DAV) at Rashtriya Raksha University.
 
-This project addresses SIH25071: "AI-Based Rockfall Prediction and Alert System for Open-Pit Mines." Mining safety is crucial, and AI-driven prediction of geological instability can help prevent accidents and save lives.
+---
 
-The objective is to build a machine learning model that analyzes simulated sensor data to classify the immediate risk of a rockfall event. This serves as a proof-of-concept for a real-time monitoring and alert system.
+## 1. Project Overview
 
-The workflow is notebook-based, similar to the biodiversity-edna-analysis project.
+The objective is to utilize data analytics techniques and machine learning—specifically classification models—to predict the risk level of rockfall events in open-pit mines based on simulated sensor data. By analyzing factors like seismic activity, vibration, water pressure, displacement, and rainfall, we aim to classify risk into distinct categories (Low, Medium, High, Critical). This project demonstrates the application of data mining and visualization principles for enhancing mining safety.
 
-## Core Features
+---
 
-- **Realistic Synthetic Data:** Custom-generated dataset simulating real-world geological and environmental sensor readings.
-- **Predictive Modeling:** Machine learning models classify rockfall risk into categories (Low, Medium, High, Critical).
-- **Feature Importance Analysis:** Identifies key sensor readings that predict rockfall risk.
-- **Clear Visualizations:** Intuitive plots and matrices to present model performance and data insights.
+## 2. Core Objectives
 
-## Technology Stack
+-   **Data Generation & Exploration:** Create a synthetic dataset simulating sensor readings relevant to rockfall conditions and perform initial exploratory data analysis.
+-   **Data Pre-processing:** Clean the data, handle categorical features (risk levels) through encoding, and split the data for model training and evaluation.
+-   **Predictive Modeling:** Apply and evaluate various classification algorithms (e.g., Logistic Regression, Random Forest, Support Vector Machine) to predict rockfall risk categories. Identify the best-performing model.
+-   **Data Visualization & Interpretation:** Create visualizations like confusion matrices to evaluate model performance. Analyze results to understand the model's predictive capabilities and potentially identify key risk indicators (though feature importance wasn't directly available for the best model (SVC) in this run).
 
-- **Language:** Python 3
-- **Data Science & ML:** pandas, scikit-learn, numpy
-- **Data Visualization:** matplotlib, seaborn
-- **Development Environment:** Jupyter Notebook
+---
 
-## Project Structure
+## 3. Technology Stack
 
-The analysis is organized into four sequential notebooks:
+-   **Language:** Python 3
+-   **Data Science & ML:** pandas, numpy, scikit-learn
+-   **Data Visualization:** matplotlib, seaborn
+-   **Development Environment:** Jupyter Notebook
 
-1. **01_data_generation_and_exploration.ipynb:** Create and explore the synthetic dataset.
-2. **02_data_preprocessing.ipynb:** Clean, encode, and prepare data for modeling.
-3. **03_model_development.ipynb:** Train and evaluate classification models.
-4. **04_results_visualization.ipynb:** Visualize results, including accuracy and key predictors.
+---
 
-## How to Run
+## 4. How to Run
 
-1. Install Python and required libraries:  
-     ```
-     pip install -r requirements.txt
-     ```
-2. Launch Jupyter Notebook or JupyterLab.
-3. Open and run the notebooks in order, starting with `01_...`.
+1.  **Environment Setup:**
+    * Clone the repository.
+    * Create and activate a Python virtual environment:
+        ```sh
+        python -m venv venv
+        # Activate (example for bash/zsh):
+        source venv/bin/activate
+        # Or (example for Windows cmd):
+        venv\Scripts\activate
+        ```
+    * Install dependencies:
+        ```sh
+        pip install -r requirements.txt
+        ```
+2.  **Launch Jupyter:** Start Jupyter Notebook or JupyterLab from your activated environment.
+3.  **Run Notebooks:** Execute the notebooks sequentially within the `/notebooks` directory:
+    1.  `01_data_generation_and_exploration.ipynb`
+    2.  `02_data_preprocessing.ipynb`
+    3.  `03_model_development.ipynb`
+    4.  `04_results_visualization.ipynb`
+
+    *The final notebook (`04_...`) displays the performance evaluation (like the confusion matrix) for the best model chosen in notebook 03.*
+
+---
 
 ## Acknowledgement
 
