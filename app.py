@@ -599,23 +599,51 @@ def make_prediction(model, input_data, metadata, label_encoder):
         if has_proba:
             st.markdown("---")
             st.subheader("Confidence Distribution")
-            
-            class_names = metadata.get('risk_categories', ['Low', 'Medium', 'High', 'Critical'])
-            class_names_sorted = sorted(class_names)
-            
+
+            # Determine display names for classes in the same order as model.classes_
+            model_classes = getattr(model, 'classes_', None)
+
+            if model_classes is not None:
+                # If we have a label encoder, use it to map model.classes_
+                if label_encoder is not None:
+                    try:
+                        class_names_display = list(label_encoder.inverse_transform(model_classes))
+                    except Exception:
+                        class_names_display = [str(c) for c in model_classes]
+                else:
+                    # If metadata provides an ordered list, map integer class labels to that list
+                    if metadata and metadata.get('risk_categories'):
+                        mc = []
+                        for c in model_classes:
+                            if isinstance(c, (int, np.integer)):
+                                idx = int(c)
+                                try:
+                                    mc.append(metadata['risk_categories'][idx])
+                                except Exception:
+                                    mc.append(str(c))
+                            else:
+                                mc.append(str(c))
+                        class_names_display = mc
+                    else:
+                        class_names_display = [str(c) for c in model_classes]
+            else:
+                # Fallback to metadata order or default order
+                class_names_display = metadata.get('risk_categories', ['Low', 'Medium', 'High', 'Critical'])
+
+            # Build dataframe aligning probabilities with the display names
             prob_df = pd.DataFrame({
-                'Risk Level': class_names_sorted,
-                'Probability': probabilities * 100
+                'Risk Level': class_names_display,
+                'Probability': list(probabilities * 100)
             })
-            
+
             fig = px.bar(prob_df, x='Risk Level', y='Probability',
                         color='Probability',
                         color_continuous_scale='Blues',
                         labels={'Probability': 'Probability (%)'},
                         title='Risk Level Probability Distribution')
-            
+
             fig.update_layout(
-                showlegend=False, 
+                showlegend=False,
                 height=400,
                 plot_bgcolor='#262730',
                 paper_bgcolor='#0E1117',
