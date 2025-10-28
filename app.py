@@ -187,33 +187,28 @@ def show_home_page(metadata):
     model_name = metadata.get('model_name', 'Unknown')
 
     card_template = """
-    <div style='background:#1E1E1E;padding:15px;border:1px solid #333333;border-left:4px solid #333333;border-radius:6px;'>
-      <div style='color:#B0B0B0;font-size:14px;margin-bottom:8px;'>{label}</div>
-      <div style='font-size:36px;color:white;margin-bottom:10px;'>{value}</div>
-      {progress}
+    <div style='background:#1E1E1E;padding:18px;border:1px solid #333333;border-left:4px solid #333333;border-radius:8px;min-height:110px;'>
+        <div style='color:#B0B0B0;font-size:13px;margin-bottom:6px;'>{label}</div>
+        <div style='font-size:34px;color:white;margin-top:6px;'>{value}</div>
+        <div style='height:8px'></div>
     </div>
     """
 
-    # Column 1: Model Accuracy (with custom progress bar)
-    progress_html = f"""
-    <div style='background:#222222;height:10px;border-radius:6px;overflow:hidden;'>
-      <div style='width:{acc_percent}%;background:#4A90E2;height:10px;'></div>
-    </div>
-    """
+    # Column 1: Model Accuracy (static display)
     with col1:
-        html = card_template.format(label='Model Accuracy', value=f'{acc_percent}%', progress=progress_html)
+        html = card_template.format(label='Model Accuracy', value=f'{acc_percent}%')
         st.markdown(html, unsafe_allow_html=True)
 
-    # Column 2: Risk Categories (no progress)
+    # Column 2: Risk Categories
     with col2:
-        html = card_template.format(label='Risk Categories', value='4 Levels', progress='')
+        html = card_template.format(label='Risk Categories', value='4 Levels')
         st.markdown(html, unsafe_allow_html=True)
 
-    # Column 3: Model Type (no progress)
+    # Column 3: Model Type
     with col3:
-        html = card_template.format(label='Model Type', value=model_name, progress='')
+        html = card_template.format(label='Model Type', value=model_name)
         st.markdown(html, unsafe_allow_html=True)
-    
+
     st.markdown("---")
     
     # Project overview
