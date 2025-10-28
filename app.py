@@ -239,6 +239,54 @@ def prepare_input_for_model(df: pd.DataFrame, metadata: dict, model=None) -> pd.
     # If we don't know expected features, return df as-is but normalized
     return df
 
+
+def _map_prediction_to_label(pred, metadata, label_encoder):
+    """Robust mapping from model prediction to human-friendly label.
+
+    Handles:
+    - label encoder if present
+    - integer class indices (e.g., 0 -> 'Low') using metadata['risk_categories']
+    - numeric strings like '0'
+    - case-insensitive match to metadata names
+    - fallback to str(pred)
+    """
+    # Try label encoder first
+    try:
+        if label_encoder is not None:
+            try:
+                return label_encoder.inverse_transform([pred])[0]
+            except Exception:
+                # fall through to other strategies
+                pass
+
+        # If it's an integer-type, map using metadata list if available
+        if isinstance(pred, (int, np.integer)):
+            if metadata and metadata.get('risk_categories'):
+                try:
+                    return metadata['risk_categories'][int(pred)]
+                except Exception:
+                    return str(pred)
+
+        # If it's a numeric string like '0' or '1'
+        if isinstance(pred, str) and pred.isdigit():
+            if metadata and metadata.get('risk_categories'):
+                try:
+                    return metadata['risk_categories'][int(pred)]
+                except Exception:
+                    return pred
+
+        # Try case-insensitive matching to metadata labels
+        if metadata and metadata.get('risk_categories'):
+            for name in metadata['risk_categories']:
+                if str(pred).strip().lower() == str(name).strip().lower():
+                    return name
+
+    except Exception:
+        pass
+
+    # Fallback
+    return str(pred)
+
 # Main app
 def main():
     # Header
@@ -377,6 +425,8 @@ def show_prediction_page(best_model, metadata, label_encoder):
     st.header("Rockfall Risk Prediction")
     st.write("Enter sensor readings to get real-time risk assessment")
     
+    st.info("ℹ️ **Note**: In this model, lower sensor readings often indicate higher risk levels, as they may suggest sensor failures, equipment issues, or concerning subsurface conditions that require immediate attention.")
+    
     # Input method selection
     input_method = st.radio("Select Input Method:", 
                             ["Manual Entry", "Upload CSV File", "Use Sample Data"])
@@ -387,17 +437,17 @@ def show_prediction_page(best_model, metadata, label_encoder):
         col1, col2 = st.columns(2)
         
         with col1:
-            seismic = st.slider("Seismic Activity (m/s²)", 0.0, 10.0, 2.5, 0.1,
+            seismic = st.slider("Seismic Activity (m/s²)", 0.0, 2.0, 0.5, 0.05,
                                help="Ground acceleration from seismic sensors")
-            vibration = st.slider("Vibration Level (mm/s)", 0.0, 50.0, 10.0, 1.0,
+            vibration = st.slider("Vibration Level (mm/s)", 0.0, 8.0, 2.0, 0.1,
                                  help="Structural vibration intensity")
-            water_pressure = st.slider("Water Pressure (kPa)", 0.0, 500.0, 150.0, 10.0,
+            water_pressure = st.slider("Water Pressure (kPa)", 0.0, 600.0, 150.0, 10.0,
                                       help="Pore water pressure in rock mass")
         
         with col2:
-            displacement = st.slider("Ground Displacement (mm)", 0.0, 100.0, 20.0, 1.0,
+            displacement = st.slider("Ground Displacement (mm)", 0.0, 12.0, 6.0, 0.5,
                                     help="Cumulative slope movement")
-            rainfall = st.slider("Rainfall (mm/hr)", 0.0, 50.0, 5.0, 1.0,
+            rainfall = st.slider("Rainfall (mm/hr)", 0.0, 70.0, 30.0, 1.0,
                                 help="Current precipitation rate")
         
         # Create input dataframe
@@ -435,24 +485,12 @@ def show_prediction_page(best_model, metadata, label_encoder):
                     if input_prepared is not None:
                         predictions = best_model.predict(input_prepared)
 
-                        if label_encoder:
-                            try:
-                                predictions_display = label_encoder.inverse_transform(predictions)
-                            except Exception:
-                                predictions_display = predictions
-                        else:
-                            # Map numeric predictions to class names if metadata provides them
-                            class_names = metadata.get('risk_categories') if metadata else None
-                            if class_names is not None:
-                                try:
-                                    predictions_display = [
-                                        class_names[int(p)] if (isinstance(p, (int, np.integer))) else str(p)
-                                        for p in predictions
-                                    ]
-                                except Exception:
-                                    predictions_display = predictions
-                            else:
-                                predictions_display = predictions
+                        # Robust mapping of predictions to display labels
+                        try:
+                            predictions_display = [_map_prediction_to_label(p, metadata, label_encoder) for p in predictions]
+                        except Exception:
+                            # fallback to raw predictions
+                            predictions_display = [str(p) for p in predictions]
 
                         results = input_data.copy()
                         results['Predicted_Risk'] = predictions_display
@@ -476,32 +514,32 @@ def show_prediction_page(best_model, metadata, label_encoder):
         
         sample_scenarios = {
             "Safe Conditions (Low Risk)": {
-                'seismic_activity': 1.0,
-                'vibration_sensor': 5.0,
-                'water_pressure': 100.0,
-                'ground_displacement': 5.0,
-                'rainfall': 2.0
+                'seismic_activity': 1.5,
+                'vibration_sensor': 6.0,
+                'water_pressure': 450.0,
+                'ground_displacement': 10.0,
+                'rainfall': 60.0
             },
             "Moderate Warning (Medium Risk)": {
-                'seismic_activity': 3.5,
-                'vibration_sensor': 15.0,
-                'water_pressure': 200.0,
-                'ground_displacement': 25.0,
-                'rainfall': 10.0
+                'seismic_activity': 0.6,
+                'vibration_sensor': 3.5,
+                'water_pressure': 250.0,
+                'ground_displacement': 7.0,
+                'rainfall': 32.0
             },
             "High Alert (High Risk)": {
-                'seismic_activity': 6.0,
-                'vibration_sensor': 30.0,
-                'water_pressure': 350.0,
-                'ground_displacement': 50.0,
-                'rainfall': 25.0
+                'seismic_activity': 0.2,
+                'vibration_sensor': 1.2,
+                'water_pressure': 130.0,
+                'ground_displacement': 3.0,
+                'rainfall': 15.0
             },
             "Emergency (Critical Risk)": {
-                'seismic_activity': 8.5,
-                'vibration_sensor': 45.0,
-                'water_pressure': 450.0,
-                'ground_displacement': 80.0,
-                'rainfall': 40.0
+                'seismic_activity': 0.05,
+                'vibration_sensor': 0.4,
+                'water_pressure': 180.0,
+                'ground_displacement': 4.0,
+                'rainfall': 20.0
             }
         }
         
@@ -529,22 +567,8 @@ def make_prediction(model, input_data, metadata, label_encoder):
 
         prediction = model.predict(input_prepared)[0]
         
-        # Get display label (map numeric labels to category names if label encoder not present)
-        try:
-            if label_encoder:
-                prediction_label = label_encoder.inverse_transform([prediction])[0]
-            else:
-                class_names = metadata.get('risk_categories') if metadata else None
-                if class_names and isinstance(prediction, (int, np.integer)):
-                    # map index to class name
-                    try:
-                        prediction_label = class_names[int(prediction)]
-                    except Exception:
-                        prediction_label = str(prediction)
-                else:
-                    prediction_label = str(prediction)
-        except Exception:
-            prediction_label = str(prediction)
+        # Map prediction to human-friendly label
+        prediction_label = _map_prediction_to_label(prediction, metadata, label_encoder)
         
         # Get probability if available
         try:
@@ -565,9 +589,11 @@ def make_prediction(model, input_data, metadata, label_encoder):
             'Critical': 'risk-critical'
         }
         
-        risk_class = risk_classes.get(prediction_label, 'risk-low')
-        st.markdown(f'<div class="{risk_class}">Risk Level: {prediction_label.upper()}</div>', 
-                   unsafe_allow_html=True)
+        # Case-insensitive lookup for CSS class
+        risk_classes_lower = {k.lower(): v for k, v in risk_classes.items()}
+        risk_class = risk_classes_lower.get(str(prediction_label).strip().lower(), 'risk-low')
+        st.markdown(f'<div class="{risk_class}">Risk Level: {prediction_label.upper()}</div>',
+                    unsafe_allow_html=True)
         
         # Recommendations
         st.markdown("---")
@@ -602,7 +628,16 @@ def make_prediction(model, input_data, metadata, label_encoder):
             ]
         }
         
-        for rec in recommendations.get(prediction_label, []):
+        # Use case-insensitive match to find canonical recommendation key
+        canonical_key = None
+        for k in recommendations.keys():
+            if k.lower() == str(prediction_label).strip().lower():
+                canonical_key = k
+                break
+        if canonical_key is None:
+            canonical_key = prediction_label
+
+        for rec in recommendations.get(canonical_key, []):
             st.write(rec)
         
         # Probability distribution
