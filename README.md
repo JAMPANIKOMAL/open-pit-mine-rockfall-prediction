@@ -1,132 +1,162 @@
 # Open-Pit Mine Rockfall Risk Assessment via Data Analytics & Visualization
 
-_A Project for Data Analytics & Visualization (DAV) Course)_
+_A Project for Data Analytics & Visualization (DAV) Course_
 
-This project addresses problem statement **SIH25071** from the Smart India Hackathon and focuses on predicting rockfall risk in open-pit mines using a high-fidelity synthetic dataset informed by real-world Kaggle statistics.
+This project addresses problem statement **SIH25071** from the Smart India Hackathon, adapted for the Data Analytics & Visualization (DAV) course (G5AD21DAV) at Rashtriya Raksha University. It focuses specifically on **rockfall prediction in open-pit mining operations** using advanced data analytics and machine learning.
 
 ---
 
 ## 1. Project Overview
 
-Objective: develop a robust risk assessment system to classify rockfall risk into four categories: **Low, Medium, High, Critical**, using engineered synthetic data and machine learning (final model: **XGBClassifier**).
+The objective is to develop a **robust risk assessment system** for predicting rockfall events. This system uses a meticulously **engineered high-fidelity synthetic dataset** where critical environmental factors are **statistically modeled on real-world Kaggle distributions** to ensure realism.
 
-Key points:
-- High-fidelity synthetic data modeled on real rainfall and seismic statistics.
-- Displacement is engineered as the strongest predictor.
-- Emphasis on realistic class imbalance and model interpretability.
+We classify rockfall risk into four distinct categories: **Low, Medium, High, and Critical**. The final deployed model is the **XGBClassifier**, selected for its high robustness and safety performance against the challenge of imbalanced data.
 
-### Data Strategy (DAV Method)
-- Analyze statistical properties of public datasets (rainfall zero-inflation, seismic long-tail).
-- Generate a unified 20,000-sample dataset using those statistics.
-- Engineer logical correlations so displacement, water pressure, seismic activity, and vibration jointly drive risk.
+### Our Data Strategy: Statistical Realism (The DAV Method)
 
-Kaggle driver sources:
-- Rainfall: https://www.kaggle.com/datasets/sujithmandala/rainfall-dataset-for-simple-time-series-analysis
-- Seismic: https://www.kaggle.com/datasets/alessandrolobello/the-ultimate-earthquake-dataset-from-1990-2023
+We utilize **High-Fidelity Synthetic Modeling informed by Real Data Statistics**. This corrects the methodological flaw of merging unrelated industrial datasets.
+
+#### Method Explanation:
+1.  **Real-World Sourcing:** We analyzed the statistical distribution (the "recipe") of **real-world rainfall data** (for zero-inflation) and **real-world seismic data** (for long-tail magnitude frequency) from public Kaggle files.
+2.  **High-Fidelity Generation:** We used those exact statistics (e.g., 20.17% zero-rainfall days, mean 1.77 seismic magnitude) to programmatically generate a clean, unified 20,000-sample dataset where the environmental factors behave realistically.
+3.  **Logical Correlation:** We engineered strong, logical relationships and ensured **displacement** is the primary, strongest driver of risk, which the model must learn.
 
 ---
 
 ## 2. Core Objectives
 
-- Create a high-fidelity synthetic dataset from statistical drivers.
-- Perform comprehensive EDA (distributions, correlation heatmaps, outlier analysis).
-- Preprocess correctly (StandardScaler, LabelEncoder) and handle imbalance (class_weight or sampling).
-- Evaluate models and select XGBClassifier based on targeted metrics (recall for Critical class, precision, confusion matrix).
-- Use SHAP for model interpretation and feature importance.
+-   **Data Generation & Sourcing:** Create a high-fidelity synthetic dataset by **statistically modeling** external factors using two specific Kaggle datasets.
+-   **Exploratory Data Analysis:** Perform deep EDA, visualizing feature distributions, correlations (heatmap), and feature-to-target relationships (box plots) to prove our engineered logic.
+-   **Preprocessing & Modeling:** Apply correct preprocessing (StandardScaler) and use the **class_weight='balanced'** strategy to train models that excel on our **imbalanced dataset**.
+-   **Model Evaluation & Interpretation:** Select the **XGBClassifier** as the final model based on its **99% Critical Recall and high robustness** over the overfit Random Forest model.
 
 ---
 
 ## 3. Dataset Composition
 
-- File: `rockfall_synthetic_data.csv` (20,000 samples)
-- Features:
-    - Displacement (mm) — primary predictor
-    - Joint Water Pressure (kPa)
-    - Seismic Activity (Magnitude)
-    - Vibration Level (score)
-    - Rainfall (mm/24h)
-- Engineered correlations: displacement derived from water pressure, seismic, and vibration.
-- Risk distribution (approximate): Low 50.5%, Medium 40.5%, High 7.3%, Critical 1.7%.
+Our final dataset (`rockfall_synthetic_data.csv`, 20,000 samples) is defined by its realistic structure:
+
+### Geotechnical Features
+| Feature | Role in Project | Modeling Strategy |
+| :--- | :--- | :--- |
+| **Displacement (mm)** | **Primary Predictor.** Engineered as the main indicator of risk. | Custom logic derived from combined factors. |
+| **Joint Water Pressure (kPa)** | Correlated factor, directly influenced by rainfall events. | Random distribution informed by rainfall statistics. |
+| **Seismic Activity (Magnitude)** | Contributor to high risk events. | Modeled on **All the Earthquakes Dataset** (long-tail distribution). |
+| **Rainfall (mm/24h)** | Weakest predictor alone, but key driver of water pressure. | Modeled on **Rainfall Dataset** (20.17% zero-inflation). |
+
+### Risk Distribution (Realistic Imbalance)
+- **Low Risk:** ~50.5%
+- **Medium Risk:** ~40.5%
+- **High Risk:** ~7.3%
+- **Critical Risk:** **~1.7%** (The model's ability to find these rare events is the primary safety objective).
 
 ---
 
 ## 4. Technology Stack
 
-- Python 3.13+
-- pandas, numpy, scikit-learn, xgboost
-- matplotlib, seaborn, plotly
-- SHAP for interpretability
-- Streamlit for deployment
-- Jupyter Notebook for development
+-   **Language:** Python 3.13+
+-   **Data Science & ML:** pandas, numpy, scikit-learn, **xgboost**
+-   **Data Visualization:** matplotlib, seaborn, plotly
+-   **Model Interpretability:** SHAP (Advanced concept used for justification)
+-   **Deployment:** Streamlit
 
 ---
 
 ## 5. Setup Instructions
 
-### Kaggle API (required)
-1. Create a Kaggle account and generate an API token (`kaggle.json`) from Account → API.
-2. Place `kaggle.json`:
-     - Windows:
-         ```powershell
-         mkdir C:\Users\<YourUsername>\.kaggle
-         Move-Item ~/Downloads/kaggle.json C:\Users\<YourUsername>\.kaggle\kaggle.json
-         ```
-     - Mac/Linux:
-         ```bash
-         mkdir -p ~/.kaggle
-         mv ~/Downloads/kaggle.json ~/.kaggle/
-         chmod 600 ~/.kaggle/kaggle.json
-         ```
-3. Accept dataset terms on Kaggle by visiting the two dataset pages and clicking "Download".
+### IMPORTANT: Kaggle API Setup (Required!)
 
----
+This project downloads real **Rainfall and Seismic driver data** from Kaggle. You **must** set up Kaggle API credentials before running the notebooks.
 
-## 6. How to Run
+#### Step 1: Get Your Kaggle API Token
+1. Go to [Kaggle.com](https://www.kaggle.com/) and sign in (create account if needed)
+2. Click on your profile picture (top right) → **Account**
+3. Scroll down to **API** section
+4. Click **Create New API Token**
+5. This downloads a file called `kaggle.json` to your computer
 
-1. Clone repository:
-     ```powershell
-     git clone [repository-link]
-     cd open-pit-mine-rockfall-prediction
-     ```
-2. Create and activate virtual environment:
-     ```powershell
-     python -m venv .venv
-     .venv\Scripts\Activate.ps1   # Windows PowerShell
-     # or
-     source .venv/bin/activate    # macOS/Linux
-     ```
-3. Install dependencies:
-     ```powershell
-     pip install -r requirements.txt
-     ```
-4. (Optional) Register Jupyter kernel:
-     ```powershell
-     python -m ipykernel install --user --name=rockfall-venv --display-name="Python (rockfall-venv)"
-     ```
-5. Run notebooks in order (notebooks/):
-     1. `01_data_sourcing_and_generation.ipynb`  ← downloads Kaggle drivers
-     2. `02_exploratory_data_analysis.ipynb`
-     3. `03_preprocessing_and_modelling.ipynb`
-     4. `04_model_interpretation_and_results.ipynb`
-6. Run Streamlit app (after notebooks complete):
-     ```powershell
-     streamlit run app.py
-     ```
+#### Step 2: Place kaggle.json in the Correct Location
+**Windows Users:**
+```powershell
+# Create .kaggle folder in your user directory
+mkdir C:\Users\<YourUsername>\.kaggle
 
----
+# Move the downloaded kaggle.json to this folder
+# Final location: C:\Users\<YourUsername>\.kaggle\kaggle.json
+````
 
-## 7. Notes & Best Practices
+**Mac/Linux Users:**
 
-- Use stratified 80/20 train-test split for reliable evaluation.
-- Monitor metrics per class (especially recall for Critical).
-- Use SHAP explanations to validate that displacement and engineered relationships drive model decisions.
+```bash
+mkdir -p ~/.kaggle
+mv ~/Downloads/kaggle.json ~/.kaggle/
+chmod 600 ~/.kaggle/kaggle.json
+```
 
----
+#### Step 3: Accept Dataset Terms on Kaggle
 
-## 8. Acknowledgement
+**IMPORTANT:** Before running the notebooks, you must accept the dataset's terms for the two driver datasets used in **Notebook 1**:
 
-This project used assistance from a large language model to help design the data strategy and documentation.
+1.  Visit: [Rainfall Dataset for Simple Time Series Analysis](https://www.kaggle.com/datasets/sujithmandala/rainfall-dataset-for-simple-time-series-analysis)
+2.  Visit: [All the Earthquakes Dataset : from 1990-2023](https://www.kaggle.com/datasets/alessandrolobello/the-ultimate-earthquake-dataset-from-1990-2023)
+3.  Log in to your Kaggle account and click the **"Download"** button on both pages (this accepts the terms).
 
----
+-----
 
-If you need further condensation, detail adjustments, or a specific README section reworded, specify which part.
+### How to Run the Project
+
+1.  **Clone Repository:**
+
+    ```powershell
+    git clone [repository-link-here]
+    cd open-pit-mine-rockfall-prediction
+    ```
+
+2.  **Create Virtual Environment:**
+
+    ```powershell
+    python -m venv .venv
+    .venv\Scripts\Activate.ps1
+    ```
+
+3.  **Install Dependencies:**
+
+    ```powershell
+    pip install -r requirements.txt
+    ```
+
+4.  **Setup Jupyter Kernel:**
+
+    ```powershell
+    python -m ipykernel install --user --name=rockfall-venv --display-name="Python (rockfall-venv)"
+    ```
+
+5.  **Launch Jupyter Notebook:**
+
+    ```powershell
+    jupyter notebook
+    ```
+
+6.  **Run Notebooks Sequentially:**
+    Execute the notebooks in the `/notebooks` directory in this **new, clean order**:
+
+    1.  **`01_data_sourcing_and_generation.ipynb`** ← Downloads Kaggle driver data here\!
+    2.  **`02_exploratory_data_analysis.ipynb`**
+    3.  **`03_preprocessing_and_modelling.ipynb`**
+    4.  **`04_model_interpretation_and_results.ipynb`**
+
+7.  **Run the Final Deployment App:**
+    After running all four notebooks successfully, you can run the final interactive web application:
+
+    ```powershell
+    streamlit run app.py
+    ```
+
+-----
+
+## 6\. Acknowledgement
+
+This project was developed with assistance from Gemini, a large language model by Google, which helped re-engineer the data strategy, validate the model interpretation, and create the robust final workflow.
+
+```
+```
