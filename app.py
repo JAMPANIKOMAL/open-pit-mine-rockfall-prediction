@@ -1,901 +1,530 @@
-"""
-Open-Pit Mine Rockfall Risk Assessment System
-Web Application using Streamlit
-
-Author: JAMPANIKOMAL
-Course: Data Analytics & Visualization (G5AD21DAV)
-Institution: Rashtriya Raksha University
-"""
-
 import streamlit as st
 import pandas as pd
 import numpy as np
-import pickle
-import matplotlib.pyplot as plt
-import seaborn as sns
-from sklearn.metrics import confusion_matrix, classification_report
-import plotly.graph_objects as go
-import plotly.express as px
 from pathlib import Path
+import pickle
+from sklearn.model_selection import train_test_split
+from sklearn.metrics import classification_report, confusion_matrix
+import plotly.express as px
+import plotly.graph_objects as go
 
-# Base directory for resolving data and model paths reliably when Streamlit
-# changes the current working directory. Use the app file location as root.
-BASE_DIR = Path(__file__).resolve().parent
-
-# Page configuration
 st.set_page_config(
     page_title="Rockfall Risk Assessment",
-    page_icon="⛏️",
-    layout="wide",
-    initial_sidebar_state="expanded"
+    page_icon="🪨",
+    layout="wide"
 )
 
-# Dark mode CSS styling
-st.markdown("""
-    <style>
-    /* Headers */
-    .main-header {
-        font-size: 2.5rem;
-        color: #FFFFFF;
-        text-align: center;
-        font-weight: bold;
-        margin-bottom: 1rem;
-        border-bottom: 3px solid #4A90E2;
-        padding-bottom: 10px;
-    }
-    .sub-header {
-        font-size: 1.2rem;
-        color: #B0B0B0;
-        text-align: center;
-        margin-bottom: 2rem;
-    }
-    
-    /* Risk level boxes - subtle professional colors */
-    .risk-critical {
-        background-color: #8B0000;
-        color: white;
-        padding: 20px;
-        border: 2px solid #A52A2A;
-        text-align: center;
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .risk-high {
-        background-color: #D35400;
-        color: white;
-        padding: 20px;
-        border: 2px solid #E67E22;
-        text-align: center;
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .risk-medium {
-        background-color: #7D6608;
-        color: white;
-        padding: 20px;
-        border: 2px solid #9A7D0A;
-        text-align: center;
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .risk-low {
-        background-color: #1E8449;
-        color: white;
-        padding: 20px;
-        border: 2px solid #27AE60;
-        text-align: center;
-        font-size: 1.5rem;
-        font-weight: bold;
-        margin-bottom: 10px;
-    }
-    .metric-card {
-        background-color: #1E1E1E;
-        padding: 15px;
-        border: 1px solid #333333;
-        border-left: 4px solid #333333;
-    }
-    </style>
-""", unsafe_allow_html=True)
+BASE_DIR = Path(__file__).resolve().parent
+DATA_PATH = BASE_DIR / "data" / "rockfall_synthetic_data.csv"
+MODELS_DIR = BASE_DIR / "models"
 
-# Load models and metadata
+FEATURE_COLUMNS = [
+    "rainfall_mm_past_24h",
+    "seismic_activity",
+    "joint_water_pressure_kPa",
+    "vibration_level",
+    "displacement_mm"
+]
+
+FEATURE_LABELS = {
+    "rainfall_mm_past_24h": "Rainfall (mm / last 24h)",
+    "seismic_activity": "Seismic Activity (Magnitude)",
+    "joint_water_pressure_kPa": "Joint Water Pressure (kPa)",
+    "vibration_level": "Vibration Level (unitless)",
+    "displacement_mm": "Slope Displacement (mm)"
+}
+
+COLUMN_ALIASES = {
+    "rainfall": "rainfall_mm_past_24h",
+    "rainfall_mm": "rainfall_mm_past_24h",
+    "rainfall_mm_past_24h": "rainfall_mm_past_24h",
+    "seismic": "seismic_activity",
+    "seismic_activity": "seismic_activity",
+    "joint_water_pressure": "joint_water_pressure_kPa",
+    "joint_water_pressure_kpa": "joint_water_pressure_kPa",
+    "water_pressure": "joint_water_pressure_kPa",
+    "vibration": "vibration_level",
+    "vibration_level": "vibration_level",
+    "vibration_sensor": "vibration_level",
+    "displacement": "displacement_mm",
+    "displacement_mm": "displacement_mm",
+    "ground_displacement": "displacement_mm"
+}
+
+FEATURE_STEPS = {
+    "rainfall_mm_past_24h": 0.1,
+    "seismic_activity": 0.05,
+    "joint_water_pressure_kPa": 0.5,
+    "vibration_level": 0.01,
+    "displacement_mm": 0.1
+}
+
+RISK_ORDER = ["Low", "Medium", "High", "Critical"]
+
+RISK_BADGES = {
+    "Low": ("#1E8449", "#F4FCF7"),
+    "Medium": ("#9A7D0A", "#FFF9E6"),
+    "High": ("#D35400", "#FFF2E6"),
+    "Critical": ("#8B0000", "#FFECEA")
+}
+
+RECOMMENDATIONS = {
+    "Low": [
+        "Continue routine operations",
+        "Maintain standard monitoring cadence",
+        "Log sensor readings for traceability"
+    ],
+    "Medium": [
+        "Increase inspection frequency",
+        "Notify geotechnical supervisor",
+        "Restrict non-essential access near the slope"
+    ],
+    "High": [
+        "Pause excavation activities in the zone",
+        "Position emergency response crew on standby",
+        "Expand real-time monitoring coverage"
+    ],
+    "Critical": [
+        "Initiate immediate evacuation",
+        "Activate emergency command protocol",
+        "Secure perimeter and halt all site activity"
+    ]
+}
+
+SAMPLE_SCENARIOS = {
+    "Stable bench (Low risk)": {
+        "rainfall_mm_past_24h": 2.0,
+        "seismic_activity": 0.9,
+        "joint_water_pressure_kPa": 32.0,
+        "vibration_level": 0.25,
+        "displacement_mm": 6.0
+    },
+    "Softening slope (Medium risk)": {
+        "rainfall_mm_past_24h": 9.5,
+        "seismic_activity": 1.6,
+        "joint_water_pressure_kPa": 55.0,
+        "vibration_level": 0.85,
+        "displacement_mm": 15.5
+    },
+    "Tension crack detected (High risk)": {
+        "rainfall_mm_past_24h": 14.0,
+        "seismic_activity": 2.4,
+        "joint_water_pressure_kPa": 68.0,
+        "vibration_level": 1.05,
+        "displacement_mm": 24.0
+    },
+    "Impending failure (Critical risk)": {
+        "rainfall_mm_past_24h": 18.0,
+        "seismic_activity": 3.1,
+        "joint_water_pressure_kPa": 78.0,
+        "vibration_level": 1.32,
+        "displacement_mm": 33.0
+    }
+}
+
+
 @st.cache_resource
-def load_models():
-    """Load trained models and metadata"""
-    try:
-        model_path = BASE_DIR / 'models' / 'best_model.pkl'
-        metadata_path = BASE_DIR / 'models' / 'model_metadata.pkl'
-        
-        with open(model_path, 'rb') as f:
-            best_model = pickle.load(f)
-        
-        with open(metadata_path, 'rb') as f:
-            metadata = pickle.load(f)
-        
-        # Try loading label encoder if it exists
-        label_encoder = None
-        if metadata.get('uses_encoded_labels', False):
-            le_path = BASE_DIR / 'models' / 'label_encoder.pkl'
-            if le_path.exists():
-                with open(le_path, 'rb') as f:
-                    label_encoder = pickle.load(f)
-        
-        return best_model, metadata, label_encoder
-    except Exception as e:
-        # Provide the fully resolved paths in the message to make debugging easier
-        st.error(f"Error loading models: {str(e)}")
-        st.info(f"Checked paths: {model_path} and {metadata_path}.\nPlease ensure you have run notebooks 01-03 to generate the models and that the files exist.")
-        return None, None, None
+def load_model_assets():
+    with open(MODELS_DIR / "xgb_model.pkl", "rb") as f:
+        model = pickle.load(f)
+    with open(MODELS_DIR / "scaler.pkl", "rb") as f:
+        scaler = pickle.load(f)
+    with open(MODELS_DIR / "label_encoder.pkl", "rb") as f:
+        label_encoder = pickle.load(f)
+    return model, scaler, label_encoder
 
-# Load test data for analysis
+
 @st.cache_data
-def load_test_data():
-    """Load test data for model evaluation"""
+def load_dataset() -> pd.DataFrame:
+    return pd.read_csv(DATA_PATH)
+
+
+@st.cache_data
+def compute_feature_stats(df: pd.DataFrame) -> dict:
+    stats = {}
+    for col in FEATURE_COLUMNS:
+        series = df[col]
+        stats[col] = {
+            "min": float(series.min()),
+            "max": float(series.max()),
+            "median": float(series.median()),
+            "p10": float(series.quantile(0.10)),
+            "p90": float(series.quantile(0.90))
+        }
+    return stats
+
+
+def align_feature_columns(raw_df: pd.DataFrame) -> pd.DataFrame:
+    df = raw_df.copy()
+    rename_map = {}
+    for col in df.columns:
+        key = col.strip().lower()
+        if key in COLUMN_ALIASES:
+            rename_map[col] = COLUMN_ALIASES[key]
+    if rename_map:
+        df = df.rename(columns=rename_map)
+    missing = [col for col in FEATURE_COLUMNS if col not in df.columns]
+    if missing:
+        raise ValueError(f"Missing required features: {', '.join(missing)}")
     try:
-        x_path = BASE_DIR / 'data' / 'processed' / 'X_test.csv'
-        y_path = BASE_DIR / 'data' / 'processed' / 'y_test.csv'
-
-        X_test = pd.read_csv(str(x_path))
-        y_test = pd.read_csv(str(y_path)).values.ravel()
-        return X_test, y_test
-    except Exception as e:
-        # Show resolved path to help the user fix missing file issues
-        st.warning(f"Test data not available: {str(e)}")
-        st.info(f"Tried loading: {x_path} and {y_path}")
-        return None, None
-
-
-def prepare_input_for_model(df: pd.DataFrame, metadata: dict, model=None) -> pd.DataFrame:
-    """Normalize and align input dataframe columns to the feature names the model expects.
-
-    This function will:
-    - lower-case and strip incoming column names
-    - attempt to use metadata feature list if available
-    - fall back to model.feature_names_in_ when present
-    - apply a small synonym map for common column name variants
-    - return a dataframe with columns ordered to match the model
-    """
-    # Defensive copy
-    df = df.copy()
-
-    # normalize incoming column names
-    original_cols = list(df.columns)
-    norm_cols = {c: c.strip().lower() for c in original_cols}
-    df.columns = [c.strip().lower() for c in original_cols]
-
-    # Determine target feature names from metadata or model
-    target_features = None
-    if metadata:
-        for key in ("feature_names", "feature_columns", "model_features", "features"):
-            if key in metadata and metadata[key]:
-                target_features = list(metadata[key])
-                break
-
-    if target_features is None and model is not None:
-        feat_attr = getattr(model, "feature_names_in_", None)
-        if feat_attr is not None:
-            target_features = list(feat_attr)
-
-    # Normalize target features if present
-    if target_features is not None:
-        target_norm = [str(c).strip().lower() for c in target_features]
-    else:
-        target_norm = None
-
-    # small synonym map for common naming differences
-    synonyms = {
-        'ground_displacement': 'displacement_mm',
-        'displacement': 'displacement_mm',
-        'displacement_mm': 'displacement_mm',
-        'vibration_sensor': 'vibration_level',
-        'vibration_level': 'vibration_level',
-        'vibration': 'vibration_level',
-        'rainfall': 'rainfall_mm',
-        'rainfall_mm': 'rainfall_mm',
-        'water_pressure': 'joint_water_pressure',
-        'joint_water_pressure': 'joint_water_pressure',
-        'seismic_activity': 'seismic_activity'
-    }
-
-    # If we know the desired features, build mapping to them
-    if target_norm is not None:
-        col_map = {}
-        for src in df.columns:
-            # direct match
-            if src in target_norm:
-                # map to the original target name (preserve original casing from metadata)
-                mapped = target_features[target_norm.index(src)]
-                col_map[src] = mapped
-                continue
-
-            # synonym match: find a target that equals the synonym
-            syn = synonyms.get(src)
-            if syn and syn in target_norm:
-                mapped = target_features[target_norm.index(syn)]
-                col_map[src] = mapped
-                continue
-
-            # try reverse: if any target_norm equals a synonym of src
-            for t_norm, t_orig in zip(target_norm, target_features):
-                if t_norm in synonyms.values() and t_norm == synonyms.get(src, ''):
-                    col_map[src] = t_orig
-                    break
-
-        # Rename incoming columns to match model expected names
-        if col_map:
-            df = df.rename(columns=col_map)
-
-        # Check for missing features
-        missing = [f for f in target_features if f not in df.columns]
-        if missing:
-            raise ValueError(f"Input is missing required features: {missing}. Available: {list(df.columns)}")
-
-        # Reorder to target feature order
-        df = df[target_features]
-        return df
-
-    # If we don't know expected features, return df as-is but normalized
+        df = df[FEATURE_COLUMNS].astype(float)
+    except ValueError as exc:
+        raise ValueError("All feature columns must be numeric.") from exc
     return df
 
 
-def _map_prediction_to_label(pred, metadata, label_encoder):
-    """Robust mapping from model prediction to human-friendly label.
-
-    Based on analysis, the model training used alphabetical encoding, but we want
-    to show the logical relationship: higher sensor values = higher risk
-    """
+def predict_dataframe(
+    input_df: pd.DataFrame,
+    model,
+    scaler,
+    label_encoder
+):
+    features = align_feature_columns(input_df)
+    scaled = scaler.transform(features)
+    predictions = model.predict(scaled)
     try:
-        if label_encoder is not None:
-            try:
-                return label_encoder.inverse_transform([pred])[0]
-            except Exception:
-                pass
-
-        # Based on training data analysis:
-        # Label 0: highest sensor values (originally Critical, but was encoded as 0)
-        # Label 1: medium-high values (originally High, but was encoded as 1) 
-        # Label 2: lowest sensor values (originally Low, but was encoded as 2)
-        # Label 3: low-medium values (originally Medium, but was encoded as 3)
-        #
-        # The model learned: high sensor values → predict 0, low sensor values → predict 2
-        # We want to show: high sensor values → "Critical", low sensor values → "Low"
-        
-        actual_mapping = {
-            0: 'Critical',  # Model predicts 0 for highest sensor values
-            1: 'High',      # Model predicts 1 for medium-high sensor values  
-            2: 'Low',       # Model predicts 2 for lowest sensor values
-            3: 'Medium'     # Model predicts 3 for low-medium sensor values
-        }
-        
-        if isinstance(pred, (int, np.integer)):
-            return actual_mapping.get(int(pred), str(pred))
-            
-        if isinstance(pred, str) and pred.isdigit():
-            return actual_mapping.get(int(pred), pred)
-            
-        # Try case-insensitive matching 
-        for name in actual_mapping.values():
-            if str(pred).strip().lower() == str(name).strip().lower():
-                return name
-
+        labels = label_encoder.inverse_transform(predictions.astype(int))
     except Exception:
-        pass
-
-    return str(pred)
-
-# Main app
-def main():
-    # Header
-    st.markdown('<div class="main-header">Open-Pit Mine Rockfall Risk Assessment System</div>', 
-                unsafe_allow_html=True)
-    st.markdown('<div class="sub-header">AI-Powered Safety Monitoring for Mining Operations</div>', 
-                unsafe_allow_html=True)
-    
-    # Load models
-    best_model, metadata, label_encoder = load_models()
-    
-    if best_model is None:
-        st.stop()
-    
-    # Sidebar
-    st.sidebar.title("Navigation")
-    
-    page = st.sidebar.radio("Select Page", 
-                            ["Home", 
-                             "Risk Prediction", 
-                             "Model Performance",
-                             "About Project"])
-    
-    # Display model info in sidebar
-    st.sidebar.markdown("---")
-    st.sidebar.markdown("### Current Model")
-    st.sidebar.info(f"""
-    **Model:** {metadata.get('model_name', 'Unknown')}  
-    **Accuracy:** {metadata.get('test_accuracy', 0)*100:.2f}%  
-    **F1-Score:** {metadata.get('test_f1_score', 0)*100:.2f}%
-    """)
-    
-    # Page routing
-    if page == "Home":
-        show_home_page(metadata)
-    elif page == "Risk Prediction":
-        show_prediction_page(best_model, metadata, label_encoder)
-    elif page == "Model Performance":
-        show_performance_page(best_model, metadata, label_encoder)
-    elif page == "About Project":
-        show_about_page()
-
-def show_home_page(metadata):
-    """Home page with project overview"""
-    col1, col2, col3 = st.columns(3)
-
-    # Build HTML cards to avoid stray empty boxes and provide precise layout
-    acc_percent = int(round(metadata.get('test_accuracy', 0) * 100))
-    model_name = metadata.get('model_name', 'Unknown')
-
-    card_template = """
-    <div style='background:#1E1E1E;padding:18px;border:1px solid #333333;border-left:4px solid #333333;border-radius:8px;min-height:110px;'>
-        <div style='color:#B0B0B0;font-size:13px;margin-bottom:6px;'>{label}</div>
-        <div style='font-size:34px;color:white;margin-top:6px;'>{value}</div>
-        <div style='height:8px'></div>
-    </div>
-    """
-
-    # Column 1: Model Accuracy (static display)
-    with col1:
-        html = card_template.format(label='Model Accuracy', value=f'{acc_percent}%')
-        st.markdown(html, unsafe_allow_html=True)
-
-    # Column 2: Risk Categories
-    with col2:
-        html = card_template.format(label='Risk Categories', value='4 Levels')
-        st.markdown(html, unsafe_allow_html=True)
-
-    # Column 3: Model Type
-    with col3:
-        html = card_template.format(label='Model Type', value=model_name)
-        st.markdown(html, unsafe_allow_html=True)
-
-    st.markdown("---")
-    
-    # Project overview
-    st.header("Project Overview")
-    st.write("""
-    This AI-powered system predicts rockfall risk levels in open-pit mining operations using 
-    real-time sensor data. The system analyzes multiple environmental and geological parameters 
-    to classify risk into four categories: **Low**, **Medium**, **High**, and **Critical**.
-    """)
-    
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.subheader("Key Features")
-        st.markdown("""
-        - Real-time Risk Assessment: Instant predictions from sensor data
-        - Multi-level Classification: 4-tier risk severity system
-        - Advanced ML Models: XGBoost, LightGBM, ensemble methods
-        - Hybrid Dataset: 20,000+ samples (synthetic + real mining data)
-        - High Accuracy: State-of-the-art performance metrics
-        """)
-    
-    with col2:
-        st.subheader("Monitored Parameters")
-        st.markdown("""
-        - Seismic Activity: Ground vibrations and tremors
-        - Vibration Sensors: Structural movement detection
-        - Water Pressure: Pore pressure in rock formations
-        - Ground Displacement: Slope deformation monitoring
-        - Rainfall: Precipitation impact on stability
-        """)
-    
-    st.markdown("---")
-    
-    # Risk level explanation
-    st.header("Risk Level Guide")
-    
-    col1, col2, col3, col4 = st.columns(4)
-    
-    with col1:
-        st.markdown('<div class="risk-low">LOW</div>', unsafe_allow_html=True)
-        st.write("**Safe Conditions**")
-        st.write("Normal operations")
-    
-    with col2:
-        st.markdown('<div class="risk-medium">MEDIUM</div>', unsafe_allow_html=True)
-        st.write("**Monitor Closely**")
-        st.write("Increase surveillance")
-    
-    with col3:
-        st.markdown('<div class="risk-high">HIGH</div>', unsafe_allow_html=True)
-        st.write("**Action Required**")
-        st.write("Restrict access zones")
-    
-    with col4:
-        st.markdown('<div class="risk-critical">CRITICAL</div>', unsafe_allow_html=True)
-        st.write("**Immediate Evacuation**")
-        st.write("Emergency protocols")
-
-def show_prediction_page(best_model, metadata, label_encoder):
-    """Interactive prediction page"""
-    
-    st.header("Rockfall Risk Prediction")
-    st.write("Enter sensor readings to get real-time risk assessment")
-    
-    st.info("ℹ️ **Note**: Higher sensor readings indicate higher risk levels - more seismic activity, vibration, water pressure, ground displacement, and rainfall suggest increased rockfall danger.")
-    
-    # Input method selection
-    input_method = st.radio("Select Input Method:", 
-                            ["Manual Entry", "Upload CSV File", "Use Sample Data"])
-    
-    if input_method == "Manual Entry":
-        st.subheader("Enter Sensor Readings")
-        
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            seismic = st.slider("Seismic Activity (m/s²)", 0.0, 2.0, 0.5, 0.05,
-                               help="Ground acceleration from seismic sensors")
-            vibration = st.slider("Vibration Level (mm/s)", 0.0, 8.0, 2.0, 0.1,
-                                 help="Structural vibration intensity")
-            water_pressure = st.slider("Water Pressure (kPa)", 0.0, 600.0, 150.0, 10.0,
-                                      help="Pore water pressure in rock mass")
-        
-        with col2:
-            displacement = st.slider("Ground Displacement (mm)", 0.0, 12.0, 6.0, 0.5,
-                                    help="Cumulative slope movement")
-            rainfall = st.slider("Rainfall (mm/hr)", 0.0, 70.0, 30.0, 1.0,
-                                help="Current precipitation rate")
-        
-        # Create input dataframe
-        input_data = pd.DataFrame({
-            'seismic_activity': [seismic],
-            'vibration_sensor': [vibration],
-            'water_pressure': [water_pressure],
-            'ground_displacement': [displacement],
-            'rainfall': [rainfall]
-        })
-        
-        if st.button("Predict Risk Level", type="primary"):
-            make_prediction(best_model, input_data, metadata, label_encoder)
-    
-    elif input_method == "Upload CSV File":
-        st.subheader("Upload CSV File")
-        st.info("CSV should contain columns: seismic_activity, vibration_sensor, water_pressure, ground_displacement, rainfall")
-        
-        uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
-
-        if uploaded_file is not None:
-            try:
-                input_data = pd.read_csv(uploaded_file)
-                st.write("Uploaded Data Preview:")
-                st.dataframe(input_data.head())
-
-                if st.button("Predict Risk Levels", type="primary"):
-                    try:
-                        input_prepared = prepare_input_for_model(input_data, metadata, best_model)
-                    except Exception as e:
-                        st.error(f"Prediction error: {str(e)}")
-                        st.info("Make sure your CSV columns match the model features. Example: displacement_mm, vibration_level, rainfall_mm, joint_water_pressure, seismic_activity")
-                        input_prepared = None
-
-                    if input_prepared is not None:
-                        predictions = best_model.predict(input_prepared)
-
-                        # Robust mapping of predictions to display labels
-                        try:
-                            predictions_display = [_map_prediction_to_label(p, metadata, label_encoder) for p in predictions]
-                        except Exception:
-                            # fallback to raw predictions
-                            predictions_display = [str(p) for p in predictions]
-
-                        results = input_data.copy()
-                        results['Predicted_Risk'] = predictions_display
-
-                        st.success("Predictions completed!")
-                        st.dataframe(results)
-
-                        # Download results
-                        csv = results.to_csv(index=False)
-                        st.download_button(
-                            label="Download Predictions",
-                            data=csv,
-                            file_name="rockfall_predictions.csv",
-                            mime="text/csv"
-                        )
-            except Exception as e:
-                st.error(f"Error processing file: {str(e)}")
-    
-    else:  # Sample Data
-        st.subheader("Sample Scenarios")
-        
-        sample_scenarios = {
-            "Safe Conditions (Low Risk)": {
-                'seismic_activity': 0.15,
-                'vibration_sensor': 1.0,
-                'water_pressure': 150.0,
-                'ground_displacement': 3.0,
-                'rainfall': 15.0
-            },
-            "Moderate Warning (Medium Risk)": {
-                'seismic_activity': 0.35,
-                'vibration_sensor': 2.3,
-                'water_pressure': 220.0,
-                'ground_displacement': 7.0,
-                'rainfall': 30.0
-            },
-            "High Alert (High Risk)": {
-                'seismic_activity': 0.65,
-                'vibration_sensor': 3.0,
-                'water_pressure': 350.0,
-                'ground_displacement': 8.0,
-                'rainfall': 45.0
-            },
-            "Emergency (Critical Risk)": {
-                'seismic_activity': 1.2,
-                'vibration_sensor': 5.5,
-                'water_pressure': 500.0,
-                'ground_displacement': 10.5,
-                'rainfall': 60.0
-            }
-        }
-        
-        scenario = st.selectbox("Select a scenario:", list(sample_scenarios.keys()))
-        
-        input_data = pd.DataFrame([sample_scenarios[scenario]])
-        
-        st.write("**Scenario Parameters:**")
-        st.dataframe(input_data)
-        
-        if st.button("Predict Risk Level", type="primary"):
-            make_prediction(best_model, input_data, metadata, label_encoder)
-
-def make_prediction(model, input_data, metadata, label_encoder):
-    """Make prediction and display results"""
-    
-    try:
-        # Align input columns to model's expected features
+        labels = predictions
+    probabilities = None
+    probability_labels = None
+    if hasattr(model, "predict_proba"):
+        probabilities = model.predict_proba(scaled)
+        classes = getattr(model, "classes_", np.arange(probabilities.shape[1]))
         try:
-            input_prepared = prepare_input_for_model(input_data, metadata, model)
-        except Exception as e:
-            st.error(f"Prediction error: {str(e)}")
-            st.info("Check that input feature names match those used during training. Example features: displacement_mm, vibration_level, rainfall_mm, joint_water_pressure, seismic_activity")
-            return
+            probability_labels = label_encoder.inverse_transform(classes.astype(int))
+        except Exception:
+            probability_labels = [str(c) for c in classes]
+    return features, np.array(labels), probabilities, probability_labels
 
-        prediction = model.predict(input_prepared)[0]
-        
-        # Map prediction to human-friendly label
-        prediction_label = _map_prediction_to_label(prediction, metadata, label_encoder)
-        
-        # Get probability if available
-        try:
-            probabilities = model.predict_proba(input_prepared)[0]
-            has_proba = True
-        except:
-            has_proba = False
-        
-        # Display prediction
-        st.markdown("---")
-        st.subheader("Prediction Result")
-        
-        # Risk level display
-        risk_classes = {
-            'Low': 'risk-low',
-            'Medium': 'risk-medium',
-            'High': 'risk-high',
-            'Critical': 'risk-critical'
-        }
-        
-        # Case-insensitive lookup for CSS class
-        risk_classes_lower = {k.lower(): v for k, v in risk_classes.items()}
-        risk_class = risk_classes_lower.get(str(prediction_label).strip().lower(), 'risk-low')
-        st.markdown(f'<div class="{risk_class}">Risk Level: {prediction_label.upper()}</div>',
-                    unsafe_allow_html=True)
-        
-        # Recommendations
-        st.markdown("---")
-        st.subheader("Recommended Actions")
-        
-        recommendations = {
-            'Low': [
-                "Continue normal mining operations",
-                "Maintain regular monitoring schedule",
-                "Document current sensor readings"
-            ],
-            'Medium': [
-                "Increase monitoring frequency",
-                "Visual inspection of slope areas",
-                "Alert geological team",
-                "Consider restricting non-essential personnel"
-            ],
-            'High': [
-                "Restrict access to high-risk zones",
-                "Evacuate non-essential personnel",
-                "Emergency team on standby",
-                "Continuous real-time monitoring",
-                "Halt operations in affected areas"
-            ],
-            'Critical': [
-                "IMMEDIATE EVACUATION REQUIRED",
-                "Activate emergency protocols",
-                "Alert all personnel immediately",
-                "Complete shutdown of operations",
-                "Emergency response team deployment",
-                "Incident command center activation"
-            ]
-        }
-        
-        # Use case-insensitive match to find canonical recommendation key
-        canonical_key = None
-        for k in recommendations.keys():
-            if k.lower() == str(prediction_label).strip().lower():
-                canonical_key = k
-                break
-        if canonical_key is None:
-            canonical_key = prediction_label
 
-        for rec in recommendations.get(canonical_key, []):
-            st.write(rec)
-        
-        # Probability distribution
-        if has_proba:
-            st.markdown("---")
-            st.subheader("Confidence Distribution")
+def render_risk_badge(label: str):
+    color, text_color = RISK_BADGES.get(label, ("#34495E", "#FFFFFF"))
+    st.markdown(
+        f"<div style='padding:0.85rem;border-radius:0.6rem;background:{color};"
+        f"color:{text_color};text-align:center;font-weight:600;font-size:1.2rem;'>"
+        f"Predicted risk: {label}</div>",
+        unsafe_allow_html=True
+    )
 
-            # Use the same mapping as our prediction function for consistency
-            actual_mapping = {
-                0: 'Critical',  # Model class 0 = Critical
-                1: 'High',      # Model class 1 = High
-                2: 'Low',       # Model class 2 = Low  
-                3: 'Medium'     # Model class 3 = Medium
-            }
-            
-            # Get model classes and map them correctly
-            model_classes = getattr(model, 'classes_', [0, 1, 2, 3])
-            class_names_display = [actual_mapping.get(c, str(c)) for c in model_classes]
 
-            # Build dataframe aligning probabilities with the correct display names
-            prob_df = pd.DataFrame({
-                'Risk Level': class_names_display,
-                'Probability': list(probabilities * 100)
-            })
+def render_probability_chart(labels, probabilities):
+    df = pd.DataFrame({
+        "Risk Level": labels,
+        "Probability": (probabilities * 100).round(2)
+    })
+    fig = px.bar(
+        df,
+        x="Risk Level",
+        y="Probability",
+        color="Probability",
+        color_continuous_scale="Blues",
+        range_y=[0, 100],
+        labels={"Probability": "Probability (%)"}
+    )
+    fig.update_layout(showlegend=False, height=360, margin=dict(l=24, r=24, t=24, b=24))
+    st.plotly_chart(fig, use_container_width=True)
 
-            fig = px.bar(prob_df, x='Risk Level', y='Probability',
-                        color='Probability',
-                        color_continuous_scale='Blues',
-                        labels={'Probability': 'Probability (%)'},
-                        title='Risk Level Probability Distribution')
 
-            fig.update_layout(
-                showlegend=False,
-                height=400,
-                plot_bgcolor='#262730',
-                paper_bgcolor='#0E1117',
-                font=dict(color='white')
-            )
-            st.plotly_chart(fig, use_container_width=True)
-        
-        # Input summary
-        st.markdown("---")
-        st.subheader("Input Data Summary")
-        st.dataframe(input_data)
-        
-    except Exception as e:
-        st.error(f"Prediction error: {str(e)}")
+def get_test_set(df: pd.DataFrame, label_encoder):
+    X = df[FEATURE_COLUMNS]
+    y = label_encoder.transform(df["risk_level"])
+    return train_test_split(
+        X,
+        y,
+        test_size=0.2,
+        random_state=42,
+        stratify=y
+    )
 
-def show_performance_page(best_model, metadata, label_encoder):
-    """Model performance analysis page"""
-    
-    st.header("Model Performance Analysis")
-    
-    # Load test data
-    X_test, y_test = load_test_data()
-    
-    if X_test is None or y_test is None:
-        st.warning("Test data not available. Please run notebooks 01-03 first.")
-        return
-    
-    # Make predictions
-    y_pred = best_model.predict(X_test)
-    
-    # Display metrics
-    col1, col2, col3, col4 = st.columns(4)
 
-    with col1:
-        st.markdown("### Model")
-        st.write(metadata.get('model_name', 'Unknown'))
-
-    # Test Accuracy as percent + progress bar
-    with col2:
-        acc_percent = int(round(metadata.get('test_accuracy', 0) * 100))
-        st.markdown("### Test Accuracy")
-        st.markdown(f"<h2 style='color: white; margin: 0;'>{acc_percent:.0f}%</h2>", unsafe_allow_html=True)
-        st.progress(acc_percent)
-
-    # F1-Score as percent + progress bar
-    with col3:
-        f1_percent = int(round(metadata.get('test_f1_score', 0) * 100))
-        st.markdown("### F1-Score")
-        st.markdown(f"<h2 style='color: white; margin: 0;'>{f1_percent:.0f}%</h2>", unsafe_allow_html=True)
-        st.progress(f1_percent)
-
-    with col4:
-        st.markdown("### Test Samples")
-        st.write(len(y_test))
-    
-    st.markdown("---")
-    
-    # Confusion Matrix
-    st.subheader("Confusion Matrix")
-    
-    class_names = metadata.get('risk_categories', ['Low', 'Medium', 'High', 'Critical'])
-    class_names_sorted = sorted(class_names)
-    
+def compute_evaluation(df: pd.DataFrame, model, scaler, label_encoder):
+    X_train, X_test, y_train, y_test = get_test_set(df, label_encoder)
+    X_test_scaled = scaler.transform(X_test)
+    y_pred = model.predict(X_test_scaled)
+    classes = label_encoder.classes_.tolist()
+    report = classification_report(
+        y_test,
+        y_pred,
+        target_names=classes,
+        output_dict=True,
+        zero_division=0
+    )
     cm = confusion_matrix(y_test, y_pred)
-    
-    fig, ax = plt.subplots(figsize=(10, 8))
-    
-    # Dark theme for matplotlib
-    fig.patch.set_facecolor('#0E1117')
-    ax.set_facecolor('#262730')
-    
-    # Use professional color scheme for heatmap
-    sns.heatmap(cm, annot=True, fmt='d', cmap='Blues',
-                xticklabels=class_names_sorted,
-                yticklabels=class_names_sorted,
-                cbar_kws={'label': 'Count'},
-                annot_kws={'color': 'white'})
-    
-    ax.set_xlabel('Predicted Risk Level', fontweight='bold', color='white')
-    ax.set_ylabel('True Risk Level', fontweight='bold', color='white')
-    ax.set_title('Confusion Matrix', fontweight='bold', fontsize=14, color='white')
-    ax.tick_params(colors='white')
-    
-    # Style colorbar
-    cbar = ax.collections[0].colorbar
-    cbar.ax.yaxis.set_tick_params(color='white')
-    plt.setp(plt.getp(cbar.ax.axes, 'yticklabels'), color='white')
-    
-    st.pyplot(fig)
-    
-    st.markdown("---")
-    
-    # Classification Report
-    st.subheader("Classification Report")
-    
-    from sklearn.metrics import classification_report
-    report = classification_report(y_test, y_pred, 
-                                   target_names=class_names_sorted,
-                                   output_dict=True)
-    
+    return X_test, y_test, y_pred, classes, report, cm
+
+
+def render_overview(df: pd.DataFrame, feature_stats: dict):
+    st.header("Project Overview")
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Samples", f"{len(df):,}")
+    col2.metric("Features", str(len(FEATURE_COLUMNS)))
+    col3.metric("Risk classes", str(len(RISK_ORDER)))
+
+    st.markdown(
+        "The dataset combines synthetic sensor readings with real-world statistical"
+        " drivers to model open-pit slope stability. Risk labels follow the logical"
+        " thresholds authored in Notebook 1."
+    )
+
+    risk_counts = df["risk_level"].value_counts().reindex(RISK_ORDER)
+    risk_pct = (risk_counts / risk_counts.sum() * 100).round(2)
+
+    st.subheader("Risk distribution")
+    fig = px.bar(
+        x=risk_counts.index,
+        y=risk_counts.values,
+        text=[f"{p}%" for p in risk_pct.fillna(0)],
+        labels={"x": "Risk level", "y": "Samples"},
+        color=risk_counts.index,
+        color_discrete_sequence=[RISK_BADGES[level][0] for level in RISK_ORDER]
+    )
+    fig.update_layout(showlegend=False, height=380, margin=dict(l=24, r=24, t=24, b=24))
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("Feature ranges (10th–90th percentile)")
+    ranges = []
+    for col in FEATURE_COLUMNS:
+        stats = feature_stats[col]
+        ranges.append({
+            "Feature": FEATURE_LABELS[col],
+            "Typical range": f"{stats['p10']:.2f} – {stats['p90']:.2f}",
+            "Absolute min": f"{stats['min']:.2f}",
+            "Absolute max": f"{stats['max']:.2f}"
+        })
+    st.dataframe(pd.DataFrame(ranges))
+
+    st.subheader("Workflow recap")
+    st.markdown(
+        "- Notebook 1 synthesised 20 000 labelled slope events with statistically realistic drivers.\n"
+        "- Notebook 2 validated feature behaviour and highlighted displacement dominance.\n"
+        "- Notebook 3 trained multiple models; the XGBClassifier delivered 99% recall on Critical events.\n"
+        "- Notebook 4 confirmed deployment readiness via confusion matrix and feature importance."
+    )
+
+
+def render_manual_input(feature_stats: dict) -> pd.DataFrame:
+    st.subheader("Manual input")
+    cols = st.columns(2)
+    values = {}
+    for idx, feature in enumerate(FEATURE_COLUMNS):
+        stats = feature_stats[feature]
+        step = FEATURE_STEPS[feature]
+        default = float(np.clip(stats["median"], stats["min"], stats["max"]))
+        widget = cols[idx % 2]
+        with widget:
+            values[feature] = st.slider(
+                FEATURE_LABELS[feature],
+                min_value=float(stats["min"]),
+                max_value=float(stats["max"]),
+                value=default,
+                step=step
+            )
+    return pd.DataFrame([values])
+
+
+def render_scenarios():
+    st.subheader("Scenario explorer")
+    scenario = st.selectbox("Choose scenario", list(SAMPLE_SCENARIOS.keys()))
+    scenario_df = pd.DataFrame([SAMPLE_SCENARIOS[scenario]])
+    st.write("Sensor profile")
+    st.dataframe(scenario_df)
+    return scenario_df
+
+
+def render_batch_section(model, scaler, label_encoder):
+    st.subheader("Batch predictions")
+    st.info("Upload CSV with columns matching the feature set. Extra columns will be ignored.")
+    uploaded = st.file_uploader("Upload CSV", type="csv")
+    if not uploaded:
+        return
+    try:
+        raw_df = pd.read_csv(uploaded)
+    except Exception as exc:
+        st.error(f"Unable to read CSV: {exc}")
+        return
+    st.write("Preview")
+    st.dataframe(raw_df.head())
+    if st.button("Run batch prediction", type="primary"):
+        try:
+            _, labels, probabilities, _ = predict_dataframe(raw_df, model, scaler, label_encoder)
+        except Exception as exc:
+            st.error(f"Prediction failed: {exc}")
+            return
+        results = raw_df.copy()
+        results["Predicted_Risk"] = labels
+        if probabilities is not None:
+            confidence = probabilities.max(axis=1) * 100
+            results["Confidence_%"] = confidence.round(2)
+        st.success("Predictions completed")
+        st.dataframe(results)
+        st.download_button(
+            label="Download results",
+            data=results.to_csv(index=False),
+            file_name="rockfall_predictions.csv",
+            mime="text/csv"
+        )
+
+
+def render_recommendations(label: str):
+    items = RECOMMENDATIONS.get(label, [])
+    if not items:
+        return
+    for item in items:
+        st.write(f"• {item}")
+
+
+def render_prediction_page(df, model, scaler, label_encoder, feature_stats):
+    st.header("Predict rockfall risk")
+    st.markdown("The model mirrors the preprocessing pipeline defined in Notebook 3 (label encoder + StandardScaler + XGBClassifier).")
+    tabs = st.tabs(["Manual input", "Scenario explorer", "Batch predictions"])
+
+    with tabs[0]:
+        manual_df = render_manual_input(feature_stats)
+        if st.button("Predict", key="manual_predict", type="primary"):
+            try:
+                _, labels, probabilities, prob_labels = predict_dataframe(manual_df, model, scaler, label_encoder)
+            except Exception as exc:
+                st.error(f"Prediction failed: {exc}")
+            else:
+                label = labels[0]
+                render_risk_badge(label)
+                st.subheader("Recommended response")
+                render_recommendations(label)
+                if probabilities is not None:
+                    render_probability_chart(prob_labels, probabilities[0])
+                st.subheader("Input summary")
+                st.dataframe(manual_df)
+
+    with tabs[1]:
+        scenario_df = render_scenarios()
+        if st.button("Predict", key="scenario_predict", type="primary"):
+            try:
+                _, labels, probabilities, prob_labels = predict_dataframe(scenario_df, model, scaler, label_encoder)
+            except Exception as exc:
+                st.error(f"Prediction failed: {exc}")
+            else:
+                label = labels[0]
+                render_risk_badge(label)
+                st.subheader("Recommended response")
+                render_recommendations(label)
+                if probabilities is not None:
+                    render_probability_chart(prob_labels, probabilities[0])
+
+    with tabs[2]:
+        render_batch_section(model, scaler, label_encoder)
+
+
+def render_model_diagnostics(df, model, scaler, label_encoder):
+    st.header("Model diagnostics")
+    X_test, y_test, y_pred, classes, report, cm = compute_evaluation(df, model, scaler, label_encoder)
+
+    accuracy = report.get("accuracy", 0) * 100
+    critical_recall = report.get("Critical", {}).get("recall", 0) * 100
+    macro_f1 = report.get("macro avg", {}).get("f1-score", 0) * 100
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Accuracy", f"{accuracy:.2f}%")
+    col2.metric("Critical recall", f"{critical_recall:.2f}%")
+    col3.metric("Macro F1", f"{macro_f1:.2f}%")
+
+    cm_df = pd.DataFrame(cm, index=classes, columns=classes)
+    st.subheader("Confusion matrix (test split, stratified)")
+    fig = go.Figure(
+        data=go.Heatmap(
+            z=cm_df.values,
+            x=cm_df.columns,
+            y=cm_df.index,
+            text=cm_df.values,
+            texttemplate="%{text}",
+            colorscale="Blues"
+        )
+    )
+    fig.update_layout(height=420, margin=dict(l=40, r=40, t=40, b=40))
+    st.plotly_chart(fig, use_container_width=True)
+
+    st.subheader("Classification report")
     report_df = pd.DataFrame(report).transpose()
-    metrics_df = report_df.loc[class_names_sorted, ['precision', 'recall', 'f1-score', 'support']]
-    
-    st.dataframe(metrics_df.style.background_gradient(cmap='Blues', subset=['precision', 'recall', 'f1-score']))
-    
-    # Metrics explanation
-    with st.expander("Understanding the Metrics"):
-        st.write("""
-        **Precision**: Of all predictions for a risk level, how many were correct?
-        - High precision = fewer false alarms
-        
-        **Recall**: Of all actual instances of a risk level, how many did we catch?
-        - High recall = fewer missed dangerous situations (most important for safety!)
-        
-        **F1-Score**: Harmonic mean of precision and recall
-        - Balanced metric for overall performance
-        
-        **Support**: Number of actual occurrences of each class in the test data
-        """)
+    display_df = report_df.loc[classes, ["precision", "recall", "f1-score", "support"]]
+    st.dataframe(display_df.style.format({"precision": "{:.3f}", "recall": "{:.3f}", "f1-score": "{:.3f}"}))
 
-def show_about_page():
-    """About page with project information"""
-    
-    st.header("About This Project")
-    
-    st.markdown("""
-    ## Academic Project
-    
-    **Course**: Data Analytics & Visualization (G5AD21DAV)  
-    **Institution**: Rashtriya Raksha University  
-    **Author**: JAMPANIKOMAL  
-    **Problem Statement**: SIH25071 - Rockfall Risk Assessment in Open-Pit Mines
-    
-    ---
-    
-    ## Project Objectives
-    
-    This project develops an AI-powered system for real-time rockfall risk assessment in 
-    open-pit mining operations. The system uses machine learning to analyze sensor data 
-    and predict risk levels, enabling proactive safety measures.
-    
-    ---
-    
-    ## Dataset
-    
-    **Hybrid Approach (20,000+ samples)**:
-    - Synthetic mine slope monitoring data (10,000 samples)
-    - Real industrial mining process data from Kaggle (10,000+ samples)
-    - Features: Seismic activity, vibration, water pressure, displacement, rainfall
-    - 4-level classification: Low, Medium, High, Critical
-    
-    ---
-    
-    ## Machine Learning Models
-    
-    **Models Evaluated**:
-    - Logistic Regression
-    - Support Vector Machine (SVM)
-    - Decision Tree
-    - Random Forest
-    - K-Nearest Neighbors
-    - Naive Bayes
-    - Gradient Boosting
-    - XGBoost
-    - LightGBM
-    - Voting Classifier (Ensemble)
-    - Stacking Classifier (Ensemble)
-    
-    **Best Model Selection**: Based on accuracy, F1-score, and cross-validation
-    
-    ---
-    
-    ## Technology Stack
-    
-    - **Data Processing**: Pandas, NumPy
-    - **Machine Learning**: Scikit-learn, XGBoost, LightGBM
-    - **Visualization**: Matplotlib, Seaborn, Plotly
-    - **Web Framework**: Streamlit
-    - **Explainable AI**: SHAP
-    
-    ---
-    
-    ## Project Structure
-    
-    ```
-    open-pit-mine-rockfall-prediction/
-    ├── notebooks/
-    │   ├── 01_data_generation_and_exploration.ipynb
-    │   ├── 02_data_preprocessing.ipynb
-    │   ├── 03_model_development.ipynb
-    │   └── 04_results_visualization.ipynb
-    ├── data/
-    │   ├── rockfall_data.csv
-    │   └── processed/
-    ├── models/
-    │   ├── best_model.pkl
-    │   ├── model_metadata.pkl
-    │   └── all_models.pkl
-    ├── app.py (this Streamlit app)
-    ├── requirements.txt
-    └── README.md
-    ```
-    
-    ---
-    
-    ## GitHub Repository
-    
-    **Repository**: [github.com/JAMPANIKOMAL/open-pit-mine-rockfall-prediction](https://github.com/JAMPANIKOMAL/open-pit-mine-rockfall-prediction)
-    
-    ---
-    
-    ## Contact
-    
-    For questions or collaboration opportunities:
-    - **GitHub**: JAMPANIKOMAL
-    - **Project**: Open-Pit Mine Rockfall Prediction System
-    
-    ---
-    
-    ## Acknowledgments
-    
-    - Rashtriya Raksha University for academic support
-    - Kaggle community for mining dataset (edumagalhaes)
-    - Open-source ML/AI community
-    - Smart India Hackathon (SIH25071 Problem Statement)
-    """)
+    if hasattr(model, "feature_importances_"):
+        st.subheader("Feature importance (XGBoost gain)")
+        importance_df = pd.DataFrame({
+            "Feature": FEATURE_COLUMNS,
+            "Importance": model.feature_importances_
+        }).sort_values("Importance", ascending=False)
+        fig_imp = px.bar(
+            importance_df,
+            x="Importance",
+            y="Feature",
+            orientation="h",
+            labels={"Importance": "Importance score", "Feature": "Feature"},
+            color="Importance",
+            color_continuous_scale="viridis"
+        )
+        fig_imp.update_layout(showlegend=False, height=380, margin=dict(l=40, r=40, t=24, b=24))
+        st.plotly_chart(fig_imp, use_container_width=True)
 
-# Run the app
+
+def render_about_section():
+    st.header("Project context")
+    st.markdown(
+        "This Streamlit interface deploys the pipeline delivered in the four-course notebooks."
+        " It relies on the synthetic dataset engineered from Kaggle rainfall and seismic"
+        " distributions and exposes the champion XGBClassifier selected in Notebook 3." 
+    )
+    st.markdown(
+        "- **Data source:** `data/rockfall_synthetic_data.csv` (20 000 samples).\n"
+        "- **Preprocessing:** StandardScaler + LabelEncoder persisted in `models/`.\n"
+        "- **Model:** `models/xgb_model.pkl` with multi-class objective.\n"
+        "- **Risk labels:** Low, Medium, High, Critical (imbalanced by design)."
+    )
+    st.markdown(
+        "Run notebooks sequentially if you need to regenerate assets or revisit analysis:"
+        " [`01` sourcing → `02` EDA → `03` modelling → `04` interpretation]."
+    )
+
+
+def main():
+    st.title("Open-Pit Mine Rockfall Risk Assessment")
+    try:
+        model, scaler, label_encoder = load_model_assets()
+    except FileNotFoundError as exc:
+        st.error(f"Model asset missing: {exc}")
+        st.stop()
+    except Exception as exc:
+        st.error(f"Failed to load model assets: {exc}")
+        st.stop()
+
+    try:
+        dataset = load_dataset()
+    except FileNotFoundError:
+        st.error("Dataset not found. Run Notebook 1 to generate `rockfall_synthetic_data.csv`.")
+        st.stop()
+    feature_stats = compute_feature_stats(dataset)
+
+    st.sidebar.title("Navigation")
+    page = st.sidebar.radio(
+        "Go to",
+        ["Overview", "Predict", "Diagnostics", "About"]
+    )
+
+    st.sidebar.markdown("---")
+    st.sidebar.markdown("### Model artefacts")
+    st.sidebar.write("xgb_model.pkl")
+    st.sidebar.write("scaler.pkl")
+    st.sidebar.write("label_encoder.pkl")
+
+    if page == "Overview":
+        render_overview(dataset, feature_stats)
+    elif page == "Predict":
+        render_prediction_page(dataset, model, scaler, label_encoder, feature_stats)
+    elif page == "Diagnostics":
+        render_model_diagnostics(dataset, model, scaler, label_encoder)
+    else:
+        render_about_section()
+
+
 if __name__ == "__main__":
     main()
