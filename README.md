@@ -17,18 +17,18 @@ We classify rockfall risk into four distinct categories: **Low, Medium, High, an
 We utilize **High-Fidelity Synthetic Modeling informed by Real Data Statistics**. This corrects the methodological flaw of merging unrelated industrial datasets.
 
 #### Method Explanation:
-1.  **Real-World Sourcing:** We analyzed the statistical distribution (the "recipe") of **real-world rainfall data** (for zero-inflation) and **real-world seismic data** (for long-tail magnitude frequency) from public Kaggle files.
-2.  **High-Fidelity Generation:** We used those exact statistics (e.g., 20.17% zero-rainfall days, mean 1.77 seismic magnitude) to programmatically generate a clean, unified 20,000-sample dataset where the environmental factors behave realistically.
-3.  **Logical Correlation:** We engineered strong, logical relationships and ensured **displacement** is the primary, strongest driver of risk, which the model must learn.
+1. **Real-World Sourcing:** We analyzed the statistical distribution (the "recipe") of **real-world rainfall data** (for zero-inflation) and **real-world seismic data** (for long-tail magnitude frequency) from public Kaggle files.
+2. **High-Fidelity Generation:** We used those exact statistics (e.g., 20.17% zero-rainfall days, mean 1.77 seismic magnitude) to programmatically generate a clean, unified 20,000-sample dataset where the environmental factors behave realistically.
+3. **Logical Correlation:** We engineered strong, logical relationships and ensured **displacement** is the primary, strongest driver of risk, which the model must learn.
 
 ---
 
 ## 2. Core Objectives
 
--   **Data Generation & Sourcing:** Create a high-fidelity synthetic dataset by **statistically modeling** external factors using two specific Kaggle datasets.
--   **Exploratory Data Analysis:** Perform deep EDA, visualizing feature distributions, correlations (heatmap), and feature-to-target relationships (box plots) to prove our engineered logic.
--   **Preprocessing & Modeling:** Apply correct preprocessing (StandardScaler) and use the **class_weight='balanced'** strategy to train models that excel on our **imbalanced dataset**.
--   **Model Evaluation & Interpretation:** Select the **XGBClassifier** as the final model based on its **99% Critical Recall and high robustness** over the overfit Random Forest model.
+- **Data Generation & Sourcing:** Create a high-fidelity synthetic dataset by **statistically modeling** external factors using two specific Kaggle datasets.
+- **Exploratory Data Analysis:** Perform deep EDA, visualizing feature distributions, correlations (heatmap), and feature-to-target relationships (box plots) to prove our engineered logic.
+- **Preprocessing & Modeling:** Apply correct preprocessing (StandardScaler) and use the **class_weight='balanced'** strategy to train models that excel on our **imbalanced dataset**.
+- **Model Evaluation & Interpretation:** Select the **XGBClassifier** as the final model based on its **99% Critical Recall and high robustness** over the overfit Random Forest model.
 
 ---
 
@@ -54,11 +54,11 @@ Our final dataset (`rockfall_synthetic_data.csv`, 20,000 samples) is defined by 
 
 ## 4. Technology Stack
 
--   **Language:** Python 3.13+
--   **Data Science & ML:** pandas, numpy, scikit-learn, **xgboost**
--   **Data Visualization:** matplotlib, seaborn, plotly
--   **Model Interpretability:** SHAP (Advanced concept used for justification)
--   **Deployment:** Streamlit
+- **Language:** Python 3.13+
+- **Data Science & ML:** pandas, numpy, scikit-learn, **xgboost**
+- **Data Visualization:** matplotlib, seaborn, plotly
+- **Model Interpretability:** SHAP (Advanced concept used for justification)
+- **Deployment:** Streamlit
 
 ---
 
@@ -78,11 +78,9 @@ This project downloads real **Rainfall and Seismic driver data** from Kaggle. Yo
 #### Step 2: Place kaggle.json in the Correct Location
 **Windows Users:**
 ```powershell
-# Create .kaggle folder in your user directory
-mkdir C:\Users\<YourUsername>\.kaggle
-
-# Move the downloaded kaggle.json to this folder
 # Final location: C:\Users\<YourUsername>\.kaggle\kaggle.json
+mkdir C:\Users\<YourUsername>\.kaggle
+Move-Item -Path ~\Downloads\kaggle.json -Destination C:\Users\<YourUsername>\.kaggle\kaggle.json
 ````
 
 **Mac/Linux Users:**
@@ -112,41 +110,25 @@ chmod 600 ~/.kaggle/kaggle.json
     cd open-pit-mine-rockfall-prediction
     ```
 
-2.  **Create Virtual Environment:**
+2.  **Create Virtual Environment and Install Dependencies:**
 
     ```powershell
     python -m venv .venv
-    .venv\Scripts\Activate.ps1
-    ```
-
-3.  **Install Dependencies:**
-
-    ```powershell
+    .venv\Scripts\Activate.ps1   # (Windows)
+    # source .venv/bin/activate  # (Mac/Linux alternative)
     pip install -r requirements.txt
     ```
 
-4.  **Setup Jupyter Kernel:**
+3.  **Run Notebooks Sequentially:**
+    Open the notebook files (e.g., using **VS Code** or **Jupyter**) and execute them in this **new, clean order**:
 
-    ```powershell
-    python -m ipykernel install --user --name=rockfall-venv --display-name="Python (rockfall-venv)"
-    ```
-
-5.  **Launch Jupyter Notebook:**
-
-    ```powershell
-    jupyter notebook
-    ```
-
-6.  **Run Notebooks Sequentially:**
-    Execute the notebooks in the `/notebooks` directory in this **new, clean order**:
-
-    1.  **`01_data_sourcing_and_generation.ipynb`** ← Downloads Kaggle driver data here\!
+    1.  **`01_data_sourcing_and_generation.ipynb`**
     2.  **`02_exploratory_data_analysis.ipynb`**
     3.  **`03_preprocessing_and_modelling.ipynb`**
     4.  **`04_model_interpretation_and_results.ipynb`**
 
-7.  **Run the Final Deployment App:**
-    After running all four notebooks successfully, you can run the final interactive web application:
+4.  **Run the Final Deployment App:**
+    After running all four notebooks successfully, execute the final interactive web application:
 
     ```powershell
     streamlit run app.py
@@ -157,6 +139,3 @@ chmod 600 ~/.kaggle/kaggle.json
 ## 6\. Acknowledgement
 
 This project was developed with assistance from Gemini, a large language model by Google, which helped re-engineer the data strategy, validate the model interpretation, and create the robust final workflow.
-
-```
-```
