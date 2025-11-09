@@ -3,10 +3,8 @@ numpy
 scikit-learn
 matplotlib
 seaborn
-jupyter
 kaggle
 xgboost
-lightgbm
 shap
 plotly
 streamlit
