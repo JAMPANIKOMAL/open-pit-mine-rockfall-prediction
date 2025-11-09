@@ -27,6 +27,7 @@ dist/
 # Allowing specific data files while ignoring others
 data/*
 !data/rockfall_data.csv
+!data/rockfall_synthetic_data.csv
 !data/processed/
 !data/processed/X_test.csv
 !data/processed/X_train.csv
