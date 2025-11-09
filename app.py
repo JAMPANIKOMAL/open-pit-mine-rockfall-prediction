@@ -8,9 +8,10 @@ from sklearn.metrics import classification_report, confusion_matrix
 import plotly.express as px
 import plotly.graph_objects as go
 
+
 st.set_page_config(
     page_title="Rockfall Risk Assessment",
-    page_icon="🪨",
+    page_icon="ROCK",
     layout="wide"
 )
 
@@ -38,17 +39,33 @@ COLUMN_ALIASES = {
     "rainfall": "rainfall_mm_past_24h",
     "rainfall_mm": "rainfall_mm_past_24h",
     "rainfall_mm_past_24h": "rainfall_mm_past_24h",
+    "rainfalllast24h": "rainfall_mm_past_24h",
+    "rainfall_mm_last_24h": "rainfall_mm_past_24h",
+    "rainfallmm24h": "rainfall_mm_past_24h",
     "seismic": "seismic_activity",
     "seismic_activity": "seismic_activity",
+    "seismicactivity": "seismic_activity",
+    "seismic_magnitude": "seismic_activity",
+    "seismicactivitymagnitude": "seismic_activity",
     "joint_water_pressure": "joint_water_pressure_kPa",
     "joint_water_pressure_kpa": "joint_water_pressure_kPa",
+    "jointwaterpressure": "joint_water_pressure_kPa",
     "water_pressure": "joint_water_pressure_kPa",
+    "waterpressure": "joint_water_pressure_kPa",
+    "pore_pressure": "joint_water_pressure_kPa",
+    "joint_water_pressure_kpa_": "joint_water_pressure_kPa",
     "vibration": "vibration_level",
     "vibration_level": "vibration_level",
+    "vibrationlevel": "vibration_level",
     "vibration_sensor": "vibration_level",
+    "vibrationsensor": "vibration_level",
+    "groundvibration": "vibration_level",
     "displacement": "displacement_mm",
     "displacement_mm": "displacement_mm",
-    "ground_displacement": "displacement_mm"
+    "ground_displacement": "displacement_mm",
+    "grounddisplacement": "displacement_mm",
+    "slope_displacement": "displacement_mm",
+    "slope_displacement_mm": "displacement_mm"
 }
 
 FEATURE_STEPS = {
@@ -123,6 +140,11 @@ SAMPLE_SCENARIOS = {
 }
 
 
+def _normalize_column_key(name: str) -> str:
+    """Return a simplified key for matching user-provided column headers."""
+    return "".join(ch for ch in name.lower() if ch.isalnum() or ch == "_")
+
+
 @st.cache_resource
 def load_model_assets():
     with open(MODELS_DIR / "xgb_model.pkl", "rb") as f:
@@ -157,10 +179,11 @@ def compute_feature_stats(df: pd.DataFrame) -> dict:
 def align_feature_columns(raw_df: pd.DataFrame) -> pd.DataFrame:
     df = raw_df.copy()
     rename_map = {}
+    normalized_aliases = {_normalize_column_key(k): v for k, v in COLUMN_ALIASES.items()}
     for col in df.columns:
-        key = col.strip().lower()
-        if key in COLUMN_ALIASES:
-            rename_map[col] = COLUMN_ALIASES[key]
+        key = _normalize_column_key(col)
+        if key in normalized_aliases:
+            rename_map[col] = normalized_aliases[key]
     if rename_map:
         df = df.rename(columns=rename_map)
     missing = [col for col in FEATURE_COLUMNS if col not in df.columns]
@@ -189,12 +212,16 @@ def predict_dataframe(
     probabilities = None
     probability_labels = None
     if hasattr(model, "predict_proba"):
-        probabilities = model.predict_proba(scaled)
-        classes = getattr(model, "classes_", np.arange(probabilities.shape[1]))
         try:
-            probability_labels = label_encoder.inverse_transform(classes.astype(int))
+            probabilities = model.predict_proba(scaled)
+            classes = getattr(model, "classes_", np.arange(probabilities.shape[1]))
+            try:
+                probability_labels = label_encoder.inverse_transform(classes.astype(int))
+            except Exception:
+                probability_labels = [str(c) for c in classes]
         except Exception:
-            probability_labels = [str(c) for c in classes]
+            probabilities = None
+            probability_labels = None
     return features, np.array(labels), probabilities, probability_labels
 
 
@@ -210,9 +237,12 @@ def render_risk_badge(label: str):
 
 def render_probability_chart(labels, probabilities):
     df = pd.DataFrame({
-        "Risk Level": labels,
+        "Risk Level": [str(label) for label in labels],
         "Probability": (probabilities * 100).round(2)
     })
+    order_map = {level: idx for idx, level in enumerate(RISK_ORDER)}
+    df["_order"] = df["Risk Level"].map(order_map).fillna(len(RISK_ORDER))
+    df = df.sort_values("_order").drop(columns="_order")
     fig = px.bar(
         df,
         x="Risk Level",
@@ -282,13 +312,13 @@ def render_overview(df: pd.DataFrame, feature_stats: dict):
     fig.update_layout(showlegend=False, height=380, margin=dict(l=24, r=24, t=24, b=24))
     st.plotly_chart(fig, use_container_width=True)
 
-    st.subheader("Feature ranges (10th–90th percentile)")
+    st.subheader("Feature ranges (10th-90th percentile)")
     ranges = []
     for col in FEATURE_COLUMNS:
         stats = feature_stats[col]
         ranges.append({
             "Feature": FEATURE_LABELS[col],
-            "Typical range": f"{stats['p10']:.2f} – {stats['p90']:.2f}",
+            "Typical range": f"{stats['p10']:.2f} - {stats['p90']:.2f}",
             "Absolute min": f"{stats['min']:.2f}",
             "Absolute max": f"{stats['max']:.2f}"
         })
@@ -296,7 +326,7 @@ def render_overview(df: pd.DataFrame, feature_stats: dict):
 
     st.subheader("Workflow recap")
     st.markdown(
-        "- Notebook 1 synthesised 20 000 labelled slope events with statistically realistic drivers.\n"
+        "- Notebook 1 synthesised 20,000 labelled slope events with statistically realistic drivers.\n"
         "- Notebook 2 validated feature behaviour and highlighted displacement dominance.\n"
         "- Notebook 3 trained multiple models; the XGBClassifier delivered 99% recall on Critical events.\n"
         "- Notebook 4 confirmed deployment readiness via confusion matrix and feature importance."
@@ -305,6 +335,10 @@ def render_overview(df: pd.DataFrame, feature_stats: dict):
 
 def render_manual_input(feature_stats: dict) -> pd.DataFrame:
     st.subheader("Manual input")
+    st.info(
+        "Field heuristics: displacement above 22 mm usually elevates risk to High,"
+        " while readings beyond 30 mm drive the Critical rules authored in Notebook 1."
+    )
     cols = st.columns(2)
     values = {}
     for idx, feature in enumerate(FEATURE_COLUMNS):
@@ -320,6 +354,14 @@ def render_manual_input(feature_stats: dict) -> pd.DataFrame:
                 value=default,
                 step=step
             )
+            st.caption(
+                f"Typical training range: {stats['p10']:.2f} - {stats['p90']:.2f}"
+            )
+            if values[feature] < stats["p10"] or values[feature] > stats["p90"]:
+                st.markdown(
+                    "<span style='color:#F4D03F;'>Outside typical range observed during training.</span>",
+                    unsafe_allow_html=True
+                )
     return pd.DataFrame([values])
 
 
@@ -371,7 +413,7 @@ def render_recommendations(label: str):
     if not items:
         return
     for item in items:
-        st.write(f"• {item}")
+        st.write(f"- {item}")
 
 
 def render_prediction_page(df, model, scaler, label_encoder, feature_stats):
@@ -391,7 +433,7 @@ def render_prediction_page(df, model, scaler, label_encoder, feature_stats):
                 render_risk_badge(label)
                 st.subheader("Recommended response")
                 render_recommendations(label)
-                if probabilities is not None:
+                if probabilities is not None and prob_labels is not None:
                     render_probability_chart(prob_labels, probabilities[0])
                 st.subheader("Input summary")
                 st.dataframe(manual_df)
@@ -408,7 +450,7 @@ def render_prediction_page(df, model, scaler, label_encoder, feature_stats):
                 render_risk_badge(label)
                 st.subheader("Recommended response")
                 render_recommendations(label)
-                if probabilities is not None:
+                if probabilities is not None and prob_labels is not None:
                     render_probability_chart(prob_labels, probabilities[0])
 
     with tabs[2]:
@@ -475,14 +517,14 @@ def render_about_section():
         " distributions and exposes the champion XGBClassifier selected in Notebook 3." 
     )
     st.markdown(
-        "- **Data source:** `data/rockfall_synthetic_data.csv` (20 000 samples).\n"
+        "- **Data source:** `data/rockfall_synthetic_data.csv` (20,000 samples).\n"
         "- **Preprocessing:** StandardScaler + LabelEncoder persisted in `models/`.\n"
         "- **Model:** `models/xgb_model.pkl` with multi-class objective.\n"
         "- **Risk labels:** Low, Medium, High, Critical (imbalanced by design)."
     )
     st.markdown(
         "Run notebooks sequentially if you need to regenerate assets or revisit analysis:"
-        " [`01` sourcing → `02` EDA → `03` modelling → `04` interpretation]."
+        " [`01` sourcing -> `02` EDA -> `03` modelling -> `04` interpretation]."
     )
 
 

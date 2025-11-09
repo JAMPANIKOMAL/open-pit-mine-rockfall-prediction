@@ -134,6 +134,16 @@ chmod 600 ~/.kaggle/kaggle.json
     streamlit run app.py
     ```
 
+### Streamlit App Highlights
+
+- **Overview tab:** Summarises dataset scale, class imbalance, and feature ranges derived directly from Notebook 2.
+- **Predict tab:**
+    - Manual sliders flag when values stray from the 10-90% training range.
+    - Scenario presets replicate common slope conditions (Low -> Critical).
+    - Batch uploader auto-aligns column headings (`displacement`, `Slope Displacement (mm)`, etc.) before scoring.
+- **Diagnostics tab:** Rebuilds the stratified test split to render the confusion matrix, classification report, and XGBoost feature importance.
+- **About tab:** Recaps the four-notebook workflow and artefacts stored under `models/` and `data/`.
+
 -----
 
 ## 6\. Acknowledgement
