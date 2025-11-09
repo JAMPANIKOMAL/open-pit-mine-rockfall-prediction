@@ -28,7 +28,7 @@ We utilize **High-Fidelity Synthetic Modeling informed by Real Data Statistics**
 - **Data Generation & Sourcing:** Create a high-fidelity synthetic dataset by **statistically modeling** external factors using two specific Kaggle datasets.
 - **Exploratory Data Analysis:** Perform deep EDA, visualizing feature distributions, correlations (heatmap), and feature-to-target relationships (box plots) to prove our engineered logic.
 - **Preprocessing & Modeling:** Apply correct preprocessing (StandardScaler) and use the **class_weight='balanced'** strategy to train models that excel on our **imbalanced dataset**.
-- **Model Evaluation & Interpretation:** Select the **XGBClassifier** as the final model based on its **99% Critical Recall and high robustness** over the overfit Random Forest model.
+- **Model Evaluation & Interpretation:** Select the **XGBClassifier** as the final model based on its **99% Critical Recall and high robustness** using the **Confusion Matrix** and **Built-in Feature Importance**.
 
 ---
 
@@ -57,7 +57,7 @@ Our final dataset (`rockfall_synthetic_data.csv`, 20,000 samples) is defined by 
 - **Language:** Python 3.13+
 - **Data Science & ML:** pandas, numpy, scikit-learn, **xgboost**
 - **Data Visualization:** matplotlib, seaborn, plotly
-- **Model Interpretability:** SHAP (Advanced concept used for justification)
+- **Model Interpretability:** Feature Importance (Built-in)
 - **Deployment:** Streamlit
 
 ---
@@ -114,8 +114,8 @@ chmod 600 ~/.kaggle/kaggle.json
 
     ```powershell
     python -m venv .venv
-    .venv\Scripts\Activate.ps1   # (Windows)
-    # source .venv/bin/activate  # (Mac/Linux alternative)
+    .venv\Scripts\Activate.ps1    # (Windows)
+    # source .venv/bin/activate   # (Mac/Linux alternative)
     pip install -r requirements.txt
     ```
 
